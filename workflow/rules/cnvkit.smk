@@ -8,8 +8,8 @@ rule cnvkit_access:
         access=f"{config['outdir']}/cnvkit/access.bed",
     log:
         "logs/cnvkit_access.log",
-    conda:
-        "../envs/cnvkit.yaml"
+    container:
+        "docker://etal/cnvkit:0.9.11"
     threads: 1
     shell:
         "cnvkit.py access {input.refg} -o {output.access} > {log} 2>&1"
@@ -25,8 +25,8 @@ rule cnvkit_targets:
         antitargets=f"{config['outdir']}/cnvkit/references/{{probes}}/antitargets.bed",
     log:
         "logs/cnvkit_targets_{probes}.log",
-    conda:
-        "../envs/cnvkit.yaml"
+    container:
+        "docker://etal/cnvkit:0.9.11"
     threads: 1
     params:
         target_avg_size=config["params"]["cnvkit"]["target_avg_size"],
@@ -61,8 +61,8 @@ rule cnvkit_coverage:
         antitarget_cov=f"{config['outdir']}/cnvkit/coverage/{{sample}}/{{sample}}.antitargetcoverage.cnn",
     log:
         "logs/cnvkit_coverage_{sample}.log",
-    conda:
-        "../envs/cnvkit.yaml"
+    container:
+        "docker://etal/cnvkit:0.9.11"
     threads: config["resources"]["threads"]
     shell:
         """
@@ -94,8 +94,8 @@ rule cnvkit_reference:
         ref=f"{config['outdir']}/cnvkit/references/{{probes}}/reference_{{sex}}.cnn",
     log:
         "logs/cnvkit_reference_{probes}_{sex}.log",
-    conda:
-        "../envs/cnvkit.yaml"
+    container:
+        "docker://etal/cnvkit:0.9.11"
     threads: config["resources"]["threads"]
     params:
         sex=lambda wc: SEX_MAP[wc.sex],

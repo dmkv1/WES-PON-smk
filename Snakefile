@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 
-configfile: "config/config.yaml"
+configfile: "config.yaml"
 
 
 samples = pd.read_csv(config["samples_csv"])
@@ -70,6 +70,26 @@ wildcard_constraints:
     sample="[^/.]+",
     probes="[^/._]+",
     sex="[mf]",
+
+
+def _tg_notify(msg):
+    env = config.get("telegram_bot_env", "")
+    if not env:
+        return
+    run_id = config.get("run_id", "")
+    prefix = f"[{run_id}] " if run_id else ""
+    shell(f"source {env} && "
+          f"curl -s -d \"chat_id=$TELEGRAM_CHAT_ID&text={prefix}{msg}\" "
+          f"\"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage\" > /dev/null")
+
+onstart:
+    _tg_notify("WES-PON-smk started 🚀")
+
+onsuccess:
+    _tg_notify("WES-PON-smk finished successfully ✅")
+
+onerror:
+    _tg_notify("WES-PON-smk FAILED ❌ — check snakemake.log")
 
 
 rule all:

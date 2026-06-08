@@ -1,6 +1,7 @@
 results/
 work/
 logs/
+tmp/
 .snakemake/
 *.pyc
 __pycache__/
