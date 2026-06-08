@@ -1,0 +1,38 @@
+samples_csv: "samples.csv"
+outdir: "results"
+
+refs:
+  genome_human: "/mnt/data/NGS/refs/broad/Homo_sapiens_assembly38.fasta"
+  refflat: "/mnt/data/NGS/refs/UCSC/refFlat.txt"
+  # BQSR known sites — flat list; GATK resolves .idx/.tbi siblings automatically
+  known_sites:
+    - "/mnt/data/NGS/refs/broad/Homo_sapiens_assembly38.dbsnp138.vcf"
+    - "/mnt/data/NGS/refs/broad/Homo_sapiens_assembly38.known_indels.vcf.gz"
+    - "/mnt/data/NGS/refs/broad/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
+
+# Keys here become the {probes} wildcard value in output filenames.
+# Each probe type needs two BED files:
+#   regions_bedfile  — used by GATK --intervals (the "Regions" BED from the kit)
+#   coverage_bedfile — used by CNVkit target/antitarget derivation (the "Covered" BED,
+#                      preprocessed to remove headers and non-standard lines)
+probe_configs:
+  SureSelectV6UTR:
+    library_prep: "SureSelectV6UTR"
+    regions_bedfile: "/mnt/data/NGS/refs/SureSelectHumanAllExon/V6UTR/S07604624_Regions.bed"
+    coverage_bedfile: "/mnt/data/NGS/refs/CNVkit/V6_UTR/S07604624_Covered_noHeader.bed"
+  SureSelectV8UTR:
+    library_prep: "SureSelectV8UTR"
+    regions_bedfile: "/mnt/data/NGS/refs/SureSelectHumanAllExon/V8UTR/S33613271_Regions.bed"
+    coverage_bedfile: "/mnt/data/NGS/refs/CNVkit/V8_UTR/S33613271_Covered_noHeader.bed"
+
+resources:
+  threads: 16
+  java_max_gb: 125
+  java_min_gb: 32
+
+params:
+  fastp:
+    detect_adapter_for_pe: true
+  cnvkit:
+    target_avg_size: 267        # bp; tune per kit if needed
+    antitarget_avg_size: 150000 # bp

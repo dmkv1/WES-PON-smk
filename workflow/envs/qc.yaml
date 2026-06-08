@@ -1,0 +1,9 @@
+name: qc
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - mosdepth=0.3.8
+  - fastqc=0.12.1
+  - multiqc=1.21
