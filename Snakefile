@@ -67,7 +67,7 @@ include: "workflow/rules/cnvkit.smk"
 
 
 wildcard_constraints:
-    sample="[^/._]+",
+    sample="[^/.]+",
     probes="[^/._]+",
     sex="[mf]",
 
