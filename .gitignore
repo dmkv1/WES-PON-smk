@@ -3,6 +3,8 @@ work/
 logs/
 tmp/
 .snakemake/
+.cache/
+.config/
 *.pyc
 __pycache__/
 *.log
