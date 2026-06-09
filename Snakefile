@@ -78,15 +78,20 @@ def _tg_notify(msg):
         return
     run_id = config.get("run_id", "")
     prefix = f"[{run_id}] " if run_id else ""
-    shell(f"source {env} && "
-          f"curl -s -d \"chat_id=$TELEGRAM_CHAT_ID&text={prefix}{msg}\" "
-          f"\"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage\" > /dev/null")
+    shell(
+        f"source {env} && "
+        f'curl -s -d "chat_id=$TELEGRAM_CHAT_ID&text={prefix}{msg}" '
+        f'"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" > /dev/null'
+    )
+
 
 onstart:
     _tg_notify("WES-PON-smk started 🚀")
 
+
 onsuccess:
     _tg_notify("WES-PON-smk finished successfully ✅")
+
 
 onerror:
     _tg_notify("WES-PON-smk FAILED ❌ — check snakemake.log")
@@ -96,18 +101,18 @@ rule all:
     input:
         # Mutect2 PON per probe type
         expand(
-            f"{outdir}/pon/pon_{{probes}}.vcf.gz",
+            f"{outdir}/PON/mutect2/{{probes}}/pon.vcf.gz",
             probes=PROBE_TYPES,
         ),
         # CNVkit PON per probe type × sex (observed combinations only)
         [
-            f"{outdir}/cnvkit/references/{probes}/reference_{sex}.cnn"
+            f"{outdir}/PON/cnvkit/{probes}/reference_{sex}.cnn"
             for probes, sex in PROBE_SEX_COMBOS
         ],
         # Aggregated QC report
         f"{outdir}/qc/multiqc_report.html",
         # Recalibrated BAMs
         expand(
-            f"{outdir}/{{sample}}/bam/{{sample}}.bam",
+            f"{outdir}/bam/{{sample}}/{{sample}}.bam",
             sample=samples.index,
         ),

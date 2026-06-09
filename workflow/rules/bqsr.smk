@@ -1,13 +1,13 @@
 rule base_recalibration:
     input:
-        bam=f"{config['outdir']}/tmp/{{sample}}.md.bam",
+        bam=f"work/bam/{{sample}}.md.bam",
         refg=config["refs"]["genome_human"],
     output:
-        recal_table=f"{config['outdir']}/metrics/{{sample}}.recal_data.table",
+        recal_table=f"{config['outdir']}/qc/metrics/{{sample}}.recal_data.table",
     log:
-        "logs/BaseRecalibrator_{sample}.log",
+        "logs/BaseRecalibrator/BaseRecalibrator_{sample}.log",
     container:
-        "docker://broadinstitute/gatk:4.6.1.0"
+        config["containers"]["gatk"]
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
@@ -30,16 +30,16 @@ rule base_recalibration:
 
 rule apply_bqsr:
     input:
-        bam=f"{config['outdir']}/tmp/{{sample}}.md.bam",
-        recal_table=f"{config['outdir']}/metrics/{{sample}}.recal_data.table",
+        bam=f"work/bam/{{sample}}.md.bam",
+        recal_table=f"{config['outdir']}/qc/metrics/{{sample}}.recal_data.table",
         refg=config["refs"]["genome_human"],
     output:
-        bam=f"{config['outdir']}/{{sample}}/bam/{{sample}}.bam",
-        bai=f"{config['outdir']}/{{sample}}/bam/{{sample}}.bai",
+        bam=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
+        bai=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bai",
     log:
-        "logs/ApplyBQSR_{sample}.log",
+        "logs/ApplyBQSR/ApplyBQSR_{sample}.log",
     container:
-        "docker://broadinstitute/gatk:4.6.1.0"
+        config["containers"]["gatk"]
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],

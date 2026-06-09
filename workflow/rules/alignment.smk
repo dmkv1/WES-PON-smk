@@ -8,7 +8,7 @@ rule fastp_trim:
         html=f"{config['outdir']}/qc/fastp/{{sample}}_fastp.html",
         json=f"{config['outdir']}/qc/fastp/{{sample}}_fastp.json",
     log:
-        "logs/fastp_{sample}.log",
+        "logs/fastp/fastp_{sample}.log",
     conda:
         "../envs/fastp.yaml"
     threads: 4
@@ -31,9 +31,9 @@ rule bwa_map:
         fq1="work/fastq/{sample}/{sample}.trimmed.1.fq.gz",
         fq2="work/fastq/{sample}/{sample}.trimmed.2.fq.gz",
     output:
-        temp(f"{config['outdir']}/tmp/{{sample}}.raw.bam"),
+        temp(f"work/bam/{{sample}}.raw.bam"),
     log:
-        "logs/bwamem_{sample}.log",
+        "logs/bwamem/bwamem_{sample}.log",
     conda:
         "../envs/bwamem.yaml"
     threads: config["resources"]["threads"]
@@ -44,13 +44,13 @@ rule bwa_map:
 
 rule add_read_groups:
     input:
-        f"{config['outdir']}/tmp/{{sample}}.raw.bam",
+        f"work/bam/{{sample}}.raw.bam",
     output:
-        temp(f"{config['outdir']}/tmp/{{sample}}.rg.bam"),
+        temp(f"work/bam/{{sample}}.rg.bam"),
     log:
-        "logs/AddOrReplaceReadGroups_{sample}.log",
+        "logs/AddOrReplaceReadGroups/AddOrReplaceReadGroups_{sample}.log",
     container:
-        "docker://broadinstitute/gatk:4.6.1.0"
+        config["containers"]["gatk"]
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
@@ -71,13 +71,13 @@ rule add_read_groups:
 
 rule fix_mate_info:
     input:
-        f"{config['outdir']}/tmp/{{sample}}.rg.bam",
+        f"work/bam/{{sample}}.rg.bam",
     output:
-        temp(f"{config['outdir']}/tmp/{{sample}}.fixmate.bam"),
+        temp(f"work/bam/{{sample}}.fixmate.bam"),
     log:
-        "logs/FixMateInformation_{sample}.log",
+        "logs/FixMateInformation/FixMateInformation_{sample}.log",
     container:
-        "docker://broadinstitute/gatk:4.6.1.0"
+        config["containers"]["gatk"]
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
@@ -96,14 +96,14 @@ rule fix_mate_info:
 
 rule mark_duplicates:
     input:
-        f"{config['outdir']}/tmp/{{sample}}.fixmate.bam",
+        f"work/bam/{{sample}}.fixmate.bam",
     output:
-        bam=temp(f"{config['outdir']}/tmp/{{sample}}.md.bam"),
-        metrics=f"{config['outdir']}/metrics/{{sample}}.dupl_metrics.txt",
+        bam=temp(f"work/bam/{{sample}}.md.bam"),
+        metrics=f"{config['outdir']}/qc/metrics/{{sample}}.dupl_metrics.txt",
     log:
-        "logs/MarkDuplicates_{sample}.log",
+        "logs/MarkDuplicates/MarkDuplicates_{sample}.log",
     container:
-        "docker://broadinstitute/gatk:4.6.1.0"
+        config["containers"]["gatk"]
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],

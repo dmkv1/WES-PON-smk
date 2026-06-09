@@ -1,18 +1,19 @@
 rule mutect2_single_sample:
     input:
-        bam=f"{config['outdir']}/{{sample}}/bam/{{sample}}.bam",
-        bai=f"{config['outdir']}/{{sample}}/bam/{{sample}}.bai",
+        bam=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
+        bai=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bai",
         refg=config["refs"]["genome_human"],
         regions=lambda wc: config["probe_configs"][probe_dict[wc.sample]][
             "regions_bedfile"
         ],
     output:
-        vcf=f"{config['outdir']}/vcf/{{sample}}.vcf",
-        idx=f"{config['outdir']}/vcf/{{sample}}.vcf.idx",
+        vcf=f"{config['outdir']}/vcf/{{sample}}/{{sample}}.vcf",
+        idx=f"{config['outdir']}/vcf/{{sample}}/{{sample}}.vcf.idx",
+        stats=f"{config['outdir']}/vcf/{{sample}}/{{sample}}.vcf.stats",
     log:
-        "logs/Mutect2_{sample}.log",
+        "logs/Mutect2/Mutect2_{sample}.log",
     container:
-        "docker://broadinstitute/gatk:4.6.1.0"
+        config["containers"]["gatk"]
     threads: config["resources"]["threads"]
     resources:
         java_min_gb=config["resources"]["java_min_gb"],

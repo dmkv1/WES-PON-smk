@@ -5,95 +5,113 @@ rule cnvkit_access:
     input:
         refg=config["refs"]["genome_human"],
     output:
-        access=f"{config['outdir']}/cnvkit/access.bed",
+        access=f"{config['outdir']}/PON/cnvkit/access.bed",
     log:
-        "logs/cnvkit_access.log",
+        "logs/cnvkit_access/cnvkit_access.log",
     container:
-        "docker://etal/cnvkit:0.9.11"
+        config["containers"]["cnvkit"]
     threads: 1
     shell:
         "cnvkit.py access {input.refg} -o {output.access} > {log} 2>&1"
 
 
-rule cnvkit_targets:
+rule cnvkit_autobin:
     input:
         coverage_bed=lambda wc: config["probe_configs"][wc.probes]["coverage_bedfile"],
         refflat=config["refs"]["refflat"],
-        access=f"{config['outdir']}/cnvkit/access.bed",
+        refg=config["refs"]["genome_human"],
+        access=f"{config['outdir']}/PON/cnvkit/access.bed",
+        bams=lambda wc: expand(
+            f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
+            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+        ),
+        bais=lambda wc: expand(
+            f"{config['outdir']}/bam/{{sample}}/{{sample}}.bai",
+            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+        ),
     output:
-        targets=f"{config['outdir']}/cnvkit/references/{{probes}}/targets.bed",
-        antitargets=f"{config['outdir']}/cnvkit/references/{{probes}}/antitargets.bed",
+        targets=f"{config['outdir']}/PON/cnvkit/{{probes}}/targets.bed",
+        antitargets=f"{config['outdir']}/PON/cnvkit/{{probes}}/antitargets.bed",
     log:
-        "logs/cnvkit_targets_{probes}.log",
+        "logs/cnvkit_autobin/cnvkit_autobin_{probes}.log",
     container:
-        "docker://etal/cnvkit:0.9.11"
+        config["containers"]["cnvkit"]
     threads: 1
     params:
-        target_avg_size=config["params"]["cnvkit"]["target_avg_size"],
-        antitarget_avg_size=config["params"]["cnvkit"]["antitarget_avg_size"],
+        method=config["params"]["cnvkit"]["autobin"]["method"],
+        bp_per_bin=config["params"]["cnvkit"]["autobin"]["bp_per_bin"],
+        target_min_size=config["params"]["cnvkit"]["autobin"]["target_min_size"],
+        target_max_size=config["params"]["cnvkit"]["autobin"]["target_max_size"],
+        antitarget_min_size=config["params"]["cnvkit"]["autobin"]["antitarget_min_size"],
+        antitarget_max_size=config["params"]["cnvkit"]["autobin"]["antitarget_max_size"],
     shell:
         """
-        cnvkit.py target {input.coverage_bed} \
-            --annotate {input.refflat} \
-            --avg-size {params.target_avg_size} \
-            -o {output.targets} >>{log} 2>&1
-        cnvkit.py antitarget {output.targets} \
+        cnvkit.py autobin {input.bams} \
+            -m {params.method} \
+            -t {input.coverage_bed} \
             -g {input.access} \
-            --avg-size {params.antitarget_avg_size} \
-            -o {output.antitargets} >>{log} 2>&1
+            -f {input.refg} \
+            --annotate {input.refflat} \
+            -b {params.bp_per_bin} \
+            --target-min-size {params.target_min_size} \
+            --target-max-size {params.target_max_size} \
+            --antitarget-min-size {params.antitarget_min_size} \
+            --antitarget-max-size {params.antitarget_max_size} \
+            --target-output-bed {output.targets} \
+            --antitarget-output-bed {output.antitargets} \
+            >{log} 2>&1
         """
 
 
 rule cnvkit_coverage:
     input:
-        bam=f"{config['outdir']}/{{sample}}/bam/{{sample}}.bam",
-        bai=f"{config['outdir']}/{{sample}}/bam/{{sample}}.bai",
+        bam=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
+        bai=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bai",
         targets=lambda wc: (
-            f"{config['outdir']}/cnvkit/references/"
-            f"{probe_dict[wc.sample]}/targets.bed"
+            f"{config['outdir']}/PON/cnvkit/" f"{probe_dict[wc.sample]}/targets.bed"
         ),
         antitargets=lambda wc: (
-            f"{config['outdir']}/cnvkit/references/"
+            f"{config['outdir']}/PON/cnvkit/"
             f"{probe_dict[wc.sample]}/antitargets.bed"
         ),
     output:
-        target_cov=f"{config['outdir']}/cnvkit/coverage/{{sample}}/{{sample}}.targetcoverage.cnn",
-        antitarget_cov=f"{config['outdir']}/cnvkit/coverage/{{sample}}/{{sample}}.antitargetcoverage.cnn",
+        target_cov=f"{config['outdir']}/coverage/{{sample}}/{{sample}}.targetcoverage.cnn",
+        antitarget_cov=f"{config['outdir']}/coverage/{{sample}}/{{sample}}.antitargetcoverage.cnn",
     log:
-        "logs/cnvkit_coverage_{sample}.log",
+        "logs/cnvkit_coverage/cnvkit_coverage_{sample}.log",
     container:
-        "docker://etal/cnvkit:0.9.11"
+        config["containers"]["cnvkit"]
     threads: config["resources"]["threads"]
     shell:
         """
         cnvkit.py coverage {input.bam} {input.targets} \
-            --count -p {threads} -o {output.target_cov} >>{log} 2>&1
+            -p {threads} -o {output.target_cov} >>{log} 2>&1
         cnvkit.py coverage {input.bam} {input.antitargets} \
-            --count -p {threads} -o {output.antitarget_cov} >>{log} 2>&1
+            -p {threads} -o {output.antitarget_cov} >>{log} 2>&1
         """
 
 
 rule cnvkit_reference:
     input:
         target_covs=lambda wc: expand(
-            f"{config['outdir']}/cnvkit/coverage/{{sample}}/{{sample}}.targetcoverage.cnn",
+            f"{config['outdir']}/coverage/{{sample}}/{{sample}}.targetcoverage.cnn",
             sample=samples[
                 (samples["probes"] == wc.probes) & (samples["sex"] == wc.sex)
             ].index.tolist(),
         ),
         antitarget_covs=lambda wc: expand(
-            f"{config['outdir']}/cnvkit/coverage/{{sample}}/{{sample}}.antitargetcoverage.cnn",
+            f"{config['outdir']}/coverage/{{sample}}/{{sample}}.antitargetcoverage.cnn",
             sample=samples[
                 (samples["probes"] == wc.probes) & (samples["sex"] == wc.sex)
             ].index.tolist(),
         ),
         refg=config["refs"]["genome_human"],
     output:
-        ref=f"{config['outdir']}/cnvkit/references/{{probes}}/reference_{{sex}}.cnn",
+        ref=f"{config['outdir']}/PON/cnvkit/{{probes}}/reference_{{sex}}.cnn",
     log:
-        "logs/cnvkit_reference_{probes}_{sex}.log",
+        "logs/cnvkit_reference/cnvkit_reference_{probes}_{sex}.log",
     container:
-        "docker://etal/cnvkit:0.9.11"
+        config["containers"]["cnvkit"]
     threads: config["resources"]["threads"]
     params:
         sex=lambda wc: SEX_MAP[wc.sex],

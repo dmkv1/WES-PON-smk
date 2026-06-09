@@ -1,10 +1,10 @@
 rule fastqc:
     input:
-        f"{config['outdir']}/{{sample}}/bam/{{sample}}.bam",
+        f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
     output:
         html=f"{config['outdir']}/qc/fastqc/{{sample}}_fastqc.html",
     log:
-        "logs/fastqc_{sample}.log",
+        "logs/fastqc/fastqc_{sample}.log",
     conda:
         "../envs/qc.yaml"
     threads: 2
@@ -25,17 +25,17 @@ rule multiqc:
             sample=samples.index,
         ),
         dupl_metrics=expand(
-            f"{config['outdir']}/metrics/{{sample}}.dupl_metrics.txt",
+            f"{config['outdir']}/qc/metrics/{{sample}}.dupl_metrics.txt",
             sample=samples.index,
         ),
         mosdepth=expand(
-            f"{config['outdir']}/metrics/{{sample}}.mosdepth.summary.txt",
+            f"{config['outdir']}/qc/metrics/{{sample}}.mosdepth.summary.txt",
             sample=samples.index,
         ),
     output:
         f"{config['outdir']}/qc/multiqc_report.html",
     log:
-        "logs/multiqc.log",
+        "logs/multiqc/multiqc.log",
     conda:
         "../envs/qc.yaml"
     params:

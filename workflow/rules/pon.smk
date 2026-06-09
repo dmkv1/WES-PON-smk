@@ -1,21 +1,21 @@
 rule genomicsdb_import:
     input:
         vcfs=lambda wc: expand(
-            f"{config['outdir']}/vcf/{{sample}}.vcf",
+            f"{config['outdir']}/vcf/{{sample}}/{{sample}}.vcf",
             sample=samples[samples["probes"] == wc.probes].index.tolist(),
         ),
         idxs=lambda wc: expand(
-            f"{config['outdir']}/vcf/{{sample}}.vcf.idx",
+            f"{config['outdir']}/vcf/{{sample}}/{{sample}}.vcf.idx",
             sample=samples[samples["probes"] == wc.probes].index.tolist(),
         ),
         refg=config["refs"]["genome_human"],
         regions=lambda wc: config["probe_configs"][wc.probes]["regions_bedfile"],
     output:
-        db=directory(f"{config['outdir']}/pon/pon_db_{{probes}}"),
+        db=directory(f"work/genomicsdb/{{probes}}"),
     log:
-        "logs/GenomicsDBImport_{probes}.log",
+        "logs/GenomicsDBImport/GenomicsDBImport_{probes}.log",
     container:
-        "docker://broadinstitute/gatk:4.6.1.0"
+        config["containers"]["gatk"]
     threads: config["resources"]["threads"]
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
@@ -41,15 +41,15 @@ rule genomicsdb_import:
 
 rule create_somatic_pon:
     input:
-        db=f"{config['outdir']}/pon/pon_db_{{probes}}",
+        db=f"work/genomicsdb/{{probes}}",
         refg=config["refs"]["genome_human"],
     output:
-        vcf=f"{config['outdir']}/pon/pon_{{probes}}.vcf.gz",
-        tbi=f"{config['outdir']}/pon/pon_{{probes}}.vcf.gz.tbi",
+        vcf=f"{config['outdir']}/PON/mutect2/{{probes}}/pon.vcf.gz",
+        tbi=f"{config['outdir']}/PON/mutect2/{{probes}}/pon.vcf.gz.tbi",
     log:
-        "logs/CreateSomaticPanelOfNormals_{probes}.log",
+        "logs/CreateSomaticPanelOfNormals/CreateSomaticPanelOfNormals_{probes}.log",
     container:
-        "docker://broadinstitute/gatk:4.6.1.0"
+        config["containers"]["gatk"]
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],

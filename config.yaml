@@ -4,6 +4,11 @@ outdir: "results"
 telegram_bot_env: "~/.telegram_bot.env"  # Path to .telegram_bot.env file; leave empty to disable notifications
 run_id: "pon"            # Human-readable label prepended to Telegram notifications, e.g. "V6_V8_rebuild"
 
+# Container images (pinned). Referenced per rule as config["containers"][...].
+containers:
+  gatk: "docker://broadinstitute/gatk:4.6.2.0"
+  cnvkit: "docker://etal/cnvkit:0.9.13"
+
 refs:
   genome_human: "/mnt/data/NGS/refs/broad/Homo_sapiens_assembly38.fasta"
   refflat: "/mnt/data/NGS/refs/UCSC/refFlat.txt"
@@ -37,5 +42,10 @@ params:
   fastp:
     detect_adapter_for_pe: true
   cnvkit:
-    target_avg_size: 267        # bp; tune per kit if needed
-    antitarget_avg_size: 150000 # bp
+    autobin:
+      method: "hybrid"
+      bp_per_bin: 100000
+      target_min_size: 20
+      target_max_size: 20000
+      antitarget_min_size: 500
+      antitarget_max_size: 500000
