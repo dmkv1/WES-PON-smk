@@ -87,8 +87,6 @@ rule cnvkit_reference:
                 (samples["probes"] == wc.probes) & (samples["sex"] == wc.sex)
             ].index.tolist(),
         ),
-        targets=f"{config['outdir']}/cnvkit/references/{{probes}}/targets.bed",
-        antitargets=f"{config['outdir']}/cnvkit/references/{{probes}}/antitargets.bed",
         refg=config["refs"]["genome_human"],
     output:
         ref=f"{config['outdir']}/cnvkit/references/{{probes}}/reference_{{sex}}.cnn",
@@ -103,8 +101,6 @@ rule cnvkit_reference:
         """
         cnvkit.py reference \
             {input.target_covs} {input.antitarget_covs} \
-            --targets {input.targets} \
-            --antitargets {input.antitargets} \
             --sample-sex {params.sex} \
             -f {input.refg} \
             -o {output.ref} >>{log} 2>&1
