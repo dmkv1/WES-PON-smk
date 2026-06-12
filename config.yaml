@@ -2,7 +2,7 @@ samples_csv: "samples.csv"
 outdir: "results"
 
 telegram_bot_env: "~/.telegram_bot.env"  # Path to .telegram_bot.env file; leave empty to disable notifications
-run_id: "pon"            # Human-readable label prepended to Telegram notifications, e.g. "V6_V8_rebuild"
+run_id: "pon"            # Human-readable label prepended to Telegram notifications
 
 # Container images (pinned). Referenced per rule as config["containers"][...].
 containers:
