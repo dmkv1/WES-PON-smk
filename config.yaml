@@ -33,8 +33,9 @@ probe_configs:
     regions_bedfile: "/mnt/data/NGS/refs/SureSelectHumanAllExon/V8UTR/S33613271_Regions.bed"
     coverage_bedfile: "/mnt/data/NGS/refs/CNVkit/V8_UTR/S33613271_Covered_noHeader.bed"
 
+# Per job resources
 resources:
-  threads: 16
+  threads: 8
   java_max_gb: 32
   java_min_gb: 8
 
