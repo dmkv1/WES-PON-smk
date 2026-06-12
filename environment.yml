@@ -1,0 +1,9 @@
+name: snakemake
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python>=3.11
+  - snakemake>=8.29.3
+  - pandas>=2.0
+  - conda
