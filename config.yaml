@@ -27,9 +27,8 @@ refs:
 #                            mosdepth, Mutect2/GenomicsDBImport, CNVkit autobin,
 #                            and the HsMetrics baits.
 #   target_regions_bedfile — the "Regions" BED; used only as HsMetrics
-#                            TARGET_INTERVALS. (For V6/V8+UTR Agilent ships this
-#                            identical to Covered, but the split is kept so a kit
-#                            with a genuine probe-vs-target design just works.)
+#                            TARGET_INTERVALS (for V6+UTR Agilent ships this
+#                            identical to Covered).
 probe_configs:
   SureSelectV6UTR:
     library_prep: "SureSelectV6UTR"
