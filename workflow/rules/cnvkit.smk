@@ -15,9 +15,22 @@ rule cnvkit_access:
         "cnvkit.py access {input.refg} -o {output.access} > {log} 2>&1"
 
 
+rule cnvkit_strip_covered:
+    # CNVkit chokes on the Agilent browser/track header lines, so strip them to a
+    # plain BED here (GATK/mosdepth tolerate the header and use the file directly).
+    input:
+        covered=lambda wc: config["probe_configs"][wc.probes]["covered_bedfile"],
+    output:
+        temp(f"work/cnvkit/{{probes}}.covered.bed"),
+    log:
+        "logs/cnvkit_strip_covered/cnvkit_strip_covered_{probes}.log",
+    shell:
+        "grep -vE '^(browser|track|#)' {input.covered} > {output} 2> {log}"
+
+
 rule cnvkit_autobin:
     input:
-        coverage_bed=lambda wc: config["probe_configs"][wc.probes]["coverage_bedfile"],
+        covered_bed=f"work/cnvkit/{{probes}}.covered.bed",
         refflat=config["refs"]["refflat"],
         refg=config["refs"]["genome_human"],
         access=f"{config['outdir']}/PON/cnvkit/access.bed",
@@ -48,7 +61,7 @@ rule cnvkit_autobin:
         """
         cnvkit.py autobin {input.bams} \
             -m {params.method} \
-            -t {input.coverage_bed} \
+            -t {input.covered_bed} \
             -g {input.access} \
             -f {input.refg} \
             --annotate {input.refflat} \

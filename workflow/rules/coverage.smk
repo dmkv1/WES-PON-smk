@@ -3,7 +3,7 @@ rule mosdepth:
         bam=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
         bai=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bai",
         regions_bed=lambda wc: config["probe_configs"][probe_dict[wc.sample]][
-            "regions_bedfile"
+            "covered_bedfile"
         ],
     output:
         summary=f"{config['outdir']}/qc/metrics/{{sample}}.mosdepth.summary.txt",

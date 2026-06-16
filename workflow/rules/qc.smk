@@ -1,28 +1,104 @@
+# QC metric sources:
+#   - FastQC reads the trimmed FASTQs (not the BQSR'd BAM, whose recalibrated
+#     base qualities make FastQC's chemistry plots meaningless).
+#   - CollectHsMetrics reports capture efficiency / on-target rate / fold
+#     enrichment from the final recalibrated BAM, against the kit's bait+target
+#     intervals (built once per probe kit by bed_to_interval_list).
+#   - MultiQC depends on the raw metric files it actually parses (fastp .json,
+#     fastqc .zip, Picard metrics, mosdepth summary), not the rendered HTML.
+
+# Picard HsMetrics distinguishes baits (where probes hybridize -> the "Covered"
+# BED) from targets (regions of interest -> the "Regions" BED).
+_BED_FOR_KIND = {"bait": "covered_bedfile", "target": "target_regions_bedfile"}
+
+
+rule bed_to_interval_list:
+    input:
+        bed=lambda wc: config["probe_configs"][wc.probes][_BED_FOR_KIND[wc.kind]],
+        refg=config["refs"]["genome_human"],
+    output:
+        f"work/intervals/{{probes}}.{{kind}}.interval_list",
+    log:
+        "logs/BedToIntervalList/BedToIntervalList_{probes}_{kind}.log",
+    container:
+        config["containers"]["gatk"]
+    resources:
+        java_min_gb=config["resources"]["java_min_gb"],
+        java_max_gb=config["resources"]["java_max_gb"],
+    wildcard_constraints:
+        kind="bait|target",
+    params:
+        tmp_dir="tmp",
+    shell:
+        """
+        gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
+            BedToIntervalList \
+            -I {input.bed} -O {output} \
+            -SD {input.refg} \
+            -TMP_DIR {params.tmp_dir} \
+            >{log} 2>&1
+        """
+
+
 rule fastqc:
     input:
-        f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
+        fq1="work/fastq/{sample}/{sample}_R1.fq.gz",
+        fq2="work/fastq/{sample}/{sample}_R2.fq.gz",
     output:
-        html=f"{config['outdir']}/qc/fastqc/{{sample}}_fastqc.html",
+        zip1=f"{config['outdir']}/qc/fastqc/{{sample}}_R1_fastqc.zip",
+        zip2=f"{config['outdir']}/qc/fastqc/{{sample}}_R2_fastqc.zip",
     log:
         "logs/fastqc/fastqc_{sample}.log",
     conda:
         "../envs/qc.yaml"
     threads: 2
     params:
-        out_dir=lambda wc, output: os.path.dirname(output.html),
+        out_dir=lambda wc, output: os.path.dirname(output.zip1),
     shell:
-        "fastqc {input} -o {params.out_dir} -t {threads} > {log} 2>&1"
+        "fastqc {input.fq1} {input.fq2} -o {params.out_dir} -t {threads} > {log} 2>&1"
+
+
+rule collect_hs_metrics:
+    input:
+        bam=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
+        bai=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bai",
+        refg=config["refs"]["genome_human"],
+        baits=lambda wc: f"work/intervals/{probe_dict[wc.sample]}.bait.interval_list",
+        targets=lambda wc: f"work/intervals/{probe_dict[wc.sample]}.target.interval_list",
+    output:
+        metrics=f"{config['outdir']}/qc/metrics/{{sample}}.hs_metrics.txt",
+    log:
+        "logs/CollectHsMetrics/CollectHsMetrics_{sample}.log",
+    container:
+        config["containers"]["gatk"]
+    resources:
+        java_min_gb=config["resources"]["java_min_gb"],
+        java_max_gb=config["resources"]["java_max_gb"],
+    params:
+        tmp_dir="tmp",
+    shell:
+        """
+        gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
+            CollectHsMetrics \
+            -I {input.bam} -O {output.metrics} \
+            -R {input.refg} \
+            --BAIT_INTERVALS {input.baits} \
+            --TARGET_INTERVALS {input.targets} \
+            -TMP_DIR {params.tmp_dir} \
+            >{log} 2>&1
+        """
 
 
 rule multiqc:
     input:
-        fastp_html=expand(
-            f"{config['outdir']}/qc/fastp/{{sample}}_fastp.html",
+        fastp_json=expand(
+            f"{config['outdir']}/qc/fastp/{{sample}}_fastp.json",
             sample=samples.index,
         ),
-        fastqc_html=expand(
-            f"{config['outdir']}/qc/fastqc/{{sample}}_fastqc.html",
+        fastqc_zip=expand(
+            f"{config['outdir']}/qc/fastqc/{{sample}}_R{{read}}_fastqc.zip",
             sample=samples.index,
+            read=[1, 2],
         ),
         dupl_metrics=expand(
             f"{config['outdir']}/qc/metrics/{{sample}}.dupl_metrics.txt",
@@ -32,6 +108,11 @@ rule multiqc:
             f"{config['outdir']}/qc/metrics/{{sample}}.mosdepth.summary.txt",
             sample=samples.index,
         ),
+        hs_metrics=expand(
+            f"{config['outdir']}/qc/metrics/{{sample}}.hs_metrics.txt",
+            sample=samples.index,
+        ),
+        config="multiqc_config.yaml",
     output:
         f"{config['outdir']}/qc/multiqc_report.html",
     log:
@@ -41,4 +122,5 @@ rule multiqc:
     params:
         outdir=config["outdir"],
     shell:
-        "multiqc {params.outdir}/ logs/ -o {params.outdir}/qc --force > {log} 2>&1"
+        "multiqc -c {input.config} {params.outdir}/ logs/ "
+        "-o {params.outdir}/qc --force > {log} 2>&1"

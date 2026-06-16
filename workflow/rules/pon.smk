@@ -9,7 +9,7 @@ rule genomicsdb_import:
             sample=samples[samples["probes"] == wc.probes].index.tolist(),
         ),
         refg=config["refs"]["genome_human"],
-        regions=lambda wc: config["probe_configs"][wc.probes]["regions_bedfile"],
+        regions=lambda wc: config["probe_configs"][wc.probes]["covered_bedfile"],
     output:
         db=directory(f"work/genomicsdb/{{probes}}"),
     log:

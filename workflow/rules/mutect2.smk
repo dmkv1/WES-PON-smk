@@ -4,7 +4,7 @@ rule mutect2_single_sample:
         bai=f"{config['outdir']}/bam/{{sample}}/{{sample}}.bai",
         refg=config["refs"]["genome_human"],
         regions=lambda wc: config["probe_configs"][probe_dict[wc.sample]][
-            "regions_bedfile"
+            "covered_bedfile"
         ],
     output:
         vcf=f"{config['outdir']}/vcf/{{sample}}/{{sample}}.vcf",

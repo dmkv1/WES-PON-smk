@@ -1,7 +1,11 @@
 rule base_recalibration:
     input:
         bam=f"work/bam/{{sample}}.md.bam",
+        bai=f"work/bam/{{sample}}.md.bai",
         refg=config["refs"]["genome_human"],
+        regions=lambda wc: config["probe_configs"][probe_dict[wc.sample]][
+            "covered_bedfile"
+        ],
     output:
         recal_table=f"{config['outdir']}/qc/metrics/{{sample}}.recal_data.table",
     log:
@@ -16,12 +20,15 @@ rule base_recalibration:
         known_sites=lambda _: " ".join(
             f"--known-sites {s}" for s in config["refs"]["known_sites"]
         ),
+        interval_padding=config["params"]["bqsr"]["interval_padding"],
     shell:
         """
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             BaseRecalibrator \
             -I {input.bam} -R {input.refg} \
             {params.known_sites} \
+            --intervals {input.regions} \
+            --interval-padding {params.interval_padding} \
             -O {output.recal_table} \
             --tmp-dir {params.tmp_dir} \
             >{log} 2>&1

@@ -1,0 +1,15 @@
+# Consolidate the General Statistics table to one row per sample.
+#
+# Different tools derive the sample name from different internal fields, which
+# otherwise splits each sample across several rows:
+#   - Picard MarkDuplicates names from the INPUT bam recorded in the metrics
+#     header (work/bam/{sample}.fixmate.bam) -> strip the ".fixmate" suffix.
+#   - fastp names from the raw input FASTQ recorded in the json (batch-specific,
+#     e.g. ..._WES_S#_merged_R1_001). Force it to use our deterministic output
+#     filename ({sample}_fastp.json) instead, then strip "_fastp".
+use_filename_as_sample_name:
+  - fastp
+
+extra_fn_clean_exts:
+  - ".fixmate"
+  - "_fastp"

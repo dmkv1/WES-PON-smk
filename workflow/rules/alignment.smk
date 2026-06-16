@@ -3,8 +3,8 @@ rule fastp_trim:
         fq1=lambda wc: get_fastq1(wc),
         fq2=lambda wc: get_fastq2(wc),
     output:
-        fq1=temp("work/fastq/{sample}/{sample}.trimmed.1.fq.gz"),
-        fq2=temp("work/fastq/{sample}/{sample}.trimmed.2.fq.gz"),
+        fq1=temp("work/fastq/{sample}/{sample}_R1.fq.gz"),
+        fq2=temp("work/fastq/{sample}/{sample}_R2.fq.gz"),
         html=f"{config['outdir']}/qc/fastp/{{sample}}_fastp.html",
         json=f"{config['outdir']}/qc/fastp/{{sample}}_fastp.json",
     log:
@@ -28,8 +28,8 @@ rule fastp_trim:
 rule bwa_map:
     input:
         refg=config["refs"]["genome_human"],
-        fq1="work/fastq/{sample}/{sample}.trimmed.1.fq.gz",
-        fq2="work/fastq/{sample}/{sample}.trimmed.2.fq.gz",
+        fq1="work/fastq/{sample}/{sample}_R1.fq.gz",
+        fq2="work/fastq/{sample}/{sample}_R2.fq.gz",
     output:
         temp(f"work/bam/{{sample}}.raw.bam"),
     log:
@@ -99,6 +99,7 @@ rule mark_duplicates:
         f"work/bam/{{sample}}.fixmate.bam",
     output:
         bam=temp(f"work/bam/{{sample}}.md.bam"),
+        bai=temp(f"work/bam/{{sample}}.md.bai"),
         metrics=f"{config['outdir']}/qc/metrics/{{sample}}.dupl_metrics.txt",
     log:
         "logs/MarkDuplicates/MarkDuplicates_{sample}.log",
@@ -114,6 +115,6 @@ rule mark_duplicates:
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             MarkDuplicates \
             -I {input} -O {output.bam} -M {output.metrics} \
-            --CREATE_INDEX false --TMP_DIR {params.tmp_dir} \
+            --CREATE_INDEX true --TMP_DIR {params.tmp_dir} \
             >{log} 2>&1
         """
