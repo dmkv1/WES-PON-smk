@@ -7,7 +7,7 @@ run_id: "pon"            # Human-readable label prepended to Telegram notificati
 # Container images (pinned). Referenced per rule as config["containers"][...].
 containers:
   gatk: "docker://broadinstitute/gatk:4.6.2.0"
-  cnvkit: "docker://etal/cnvkit:0.9.13"
+  cnvkit: "docker://etal/cnvkit:0.9.14"
 
 refs:
   genome_human: "/mnt/data/NGS/refs/broad/Homo_sapiens_assembly38.fasta"
