@@ -10,6 +10,9 @@ containers:
   cnvkit: "docker://etal/cnvkit:0.9.14"
 
 refs:
+  # Root directory bound into containers (APPTAINER_BIND/SINGULARITY_BIND, set
+  # in the Snakefile); every path below must resolve under it.
+  path: "/mnt/data/NGS/refs"
   genome_human: "/mnt/data/NGS/refs/broad/Homo_sapiens_assembly38.fasta"
   refflat: "/mnt/data/NGS/refs/UCSC/refFlat.txt"
   # BQSR known sites — flat list; GATK resolves .idx/.tbi siblings automatically

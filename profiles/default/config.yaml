@@ -1,9 +1,6 @@
 # Total Snakemake CPU cores cap
 cores: 32
 
-# Additional container path mounts
-singularity-args: "-B /mnt/data/NGS/refs:/mnt/data/NGS/refs"
-
 use-conda: true
 use-singularity: true
 keep-going: true

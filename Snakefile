@@ -4,6 +4,8 @@ import os
 
 configfile: "config.yaml"
 
+os.environ["APPTAINER_BIND"] = config["refs"]["path"]
+os.environ["SINGULARITY_BIND"] = config["refs"]["path"]
 
 samples = pd.read_csv(config["samples_csv"])
 samples = samples.set_index("ID", drop=False)
