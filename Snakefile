@@ -66,6 +66,7 @@ include: "workflow/rules/qc.smk"
 include: "workflow/rules/mutect2.smk"
 include: "workflow/rules/pon.smk"
 include: "workflow/rules/cnvkit.smk"
+include: "workflow/rules/purecn.smk"
 
 
 wildcard_constraints:
@@ -111,6 +112,15 @@ rule all:
             f"{outdir}/PON/cnvkit/{probes}/reference_{sex}.cnn"
             for probes, sex in PROBE_SEX_COMBOS
         ],
+        # PureCN normal database per probe type
+        expand(
+            f"{outdir}/PON/purecn/{{probes}}/normalDB_{{probes}}_hg38.rds",
+            probes=PROBE_TYPES,
+        ),
+        expand(
+            f"{outdir}/PON/purecn/{{probes}}/mapping_bias_{{probes}}_hg38.rds",
+            probes=PROBE_TYPES,
+        ),
         # Aggregated QC report
         f"{outdir}/qc/multiqc_report.html",
         # Recalibrated BAMs

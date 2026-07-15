@@ -8,6 +8,7 @@ run_id: "pon"            # Human-readable label prepended to Telegram notificati
 containers:
   gatk: "docker://broadinstitute/gatk:4.6.2.0"
   cnvkit: "docker://etal/cnvkit:0.9.14"
+  purecn: "docker://markusriester/purecn:2.10.0-amd64"
 
 refs:
   # Root directory bound into containers (APPTAINER_BIND/SINGULARITY_BIND, set

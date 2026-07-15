@@ -7,3 +7,4 @@ P028_CTRL_BS,m,SureSelectV8UTR,/mnt/data/NGS/WES/fastq/CLIP/merged/240215_EXOM_P
 P052_CTRL_BS,f,SureSelectV6UTR,/mnt/data/NGS/WES/fastq/CLIP/merged/221219_EXOM_PK/P052_CTRL_BS_WES_S5_merged_R1_001.fastq.gz,/mnt/data/NGS/WES/fastq/CLIP/merged/221219_EXOM_PK/P052_CTRL_BS_WES_S5_merged_R2_001.fastq.gz
 P068_CTRL_BM,f,SureSelectV8UTR,/mnt/data/NGS/WES/fastq/CLIP/merged/230720_EXOM_PK/P068_CTRL_BM_WES_S6_merged_R1_001.fastq.gz,/mnt/data/NGS/WES/fastq/CLIP/merged/230720_EXOM_PK/P068_CTRL_BM_WES_S6_merged_R2_001.fastq.gz
 P100_CTRL_BS,f,SureSelectV8UTR,/mnt/data/NGS/WES/fastq/CLIP/merged/240209_EXOM_PK/P100_CTRL_BS_WES_S1_merged_R1_001.fastq.gz,/mnt/data/NGS/WES/fastq/CLIP/merged/240209_EXOM_PK/P100_CTRL_BS_WES_S1_merged_R2_001.fastq.gz
+P005_CTRL,m,SureSelectV6UTR,/mnt/data/NGS/WES/fastq/CLIP/merged/230405_EXOM_PK/P005_CTRL_WES_S4_merged_R1_001.fastq.gz,/mnt/data/NGS/WES/fastq/CLIP/merged/230405_EXOM_PK/P005_CTRL_WES_S4_merged_R2_001.fastq.gz
