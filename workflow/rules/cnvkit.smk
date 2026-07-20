@@ -104,6 +104,33 @@ rule cnvkit_coverage:
         """
 
 
+rule cnvkit_fix:
+    # Normals need the same cnvkit.py fix pass tumors get downstream (fix
+    # against the sex-matched PON reference), so their PureCN coverage is
+    # built from the identical trimmed bin set instead of the raw,
+    # untrimmed target+antitarget .cnn pair. Mismatched bin sets make
+    # PureCN's identical() check reject every normal in the DB.
+    input:
+        target_cov=f"{config['outdir']}/coverage/{{sample}}/{{sample}}.targetcoverage.cnn",
+        antitarget_cov=f"{config['outdir']}/coverage/{{sample}}/{{sample}}.antitargetcoverage.cnn",
+        ref=lambda wc: (
+            f"{config['outdir']}/PON/cnvkit/"
+            f"{probe_dict[wc.sample]}/reference_{sex_dict[wc.sample]}.cnn"
+        ),
+    output:
+        cnr=f"{config['outdir']}/coverage/{{sample}}/{{sample}}.cnr",
+    log:
+        "logs/cnvkit_fix/cnvkit_fix_{sample}.log",
+    container:
+        config["containers"]["cnvkit"]
+    threads: 1
+    shell:
+        """
+        cnvkit.py fix {input.target_cov} {input.antitarget_cov} {input.ref} \
+            -o {output.cnr} >{log} 2>&1
+        """
+
+
 rule cnvkit_reference:
     input:
         target_covs=lambda wc: expand(

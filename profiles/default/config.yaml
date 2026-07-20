@@ -1,5 +1,5 @@
 # Total Snakemake CPU cores cap
-cores: 32
+cores: 48
 
 use-conda: true
 use-singularity: true

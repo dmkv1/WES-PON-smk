@@ -112,15 +112,16 @@ rule all:
             f"{outdir}/PON/cnvkit/{probes}/reference_{sex}.cnn"
             for probes, sex in PROBE_SEX_COMBOS
         ],
-        # PureCN normal database per probe type
-        expand(
-            f"{outdir}/PON/purecn/{{probes}}/normalDB_{{probes}}_hg38.rds",
-            probes=PROBE_TYPES,
-        ),
-        expand(
-            f"{outdir}/PON/purecn/{{probes}}/mapping_bias_{{probes}}_hg38.rds",
-            probes=PROBE_TYPES,
-        ),
+        # PureCN normal database per probe type x sex (observed combinations
+        # only — see PROBE_SEX_COMBOS)
+        [
+            f"{outdir}/PON/purecn/{probes}/normalDB_{probes}_{sex}_hg38.rds"
+            for probes, sex in PROBE_SEX_COMBOS
+        ],
+        [
+            f"{outdir}/PON/purecn/{probes}/mapping_bias_{probes}_{sex}_hg38.rds"
+            for probes, sex in PROBE_SEX_COMBOS
+        ],
         # Aggregated QC report
         f"{outdir}/qc/multiqc_report.html",
         # Recalibrated BAMs

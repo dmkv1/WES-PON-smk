@@ -7,17 +7,18 @@ rule purecn_coverage:
     # instead, which does populate it. Absolute scale of total_coverage
     # doesn't matter (PureCN only uses row-relative fractions), so
     # depth * width is a fine stand-in for a true read count.
+    # Source is each normal's own .cnr (post cnvkit.py fix against the
+    # sex-matched PON reference), not the raw target/antitarget .cnn pair:
+    # tumors are fixed against that same reference downstream, and fix trims
+    # bins with unusable signal. Feeding PureCN the untrimmed normal bin set
+    # makes its identical() interval check reject every tumor comparison.
     input:
-        target_cov=f"{config['outdir']}/coverage/{{sample}}/{{sample}}.targetcoverage.cnn",
-        antitarget_cov=f"{config['outdir']}/coverage/{{sample}}/{{sample}}.antitargetcoverage.cnn",
+        cnr=f"{config['outdir']}/coverage/{{sample}}/{{sample}}.cnr",
     output:
         cov=f"{config['outdir']}/PON/purecn/coverage/{{sample}}.txt",
     run:
-        target = pd.read_csv(input.target_cov, sep="\t")
-        antitarget = pd.read_csv(input.antitarget_cov, sep="\t")
-        target["on_target"] = True
-        antitarget["on_target"] = False
-        cov = pd.concat([target, antitarget], ignore_index=True)
+        cov = pd.read_csv(input.cnr, sep="\t")
+        cov["on_target"] = cov["gene"] != "Antitarget"
         cov["Target"] = (
             cov["chromosome"]
             + ":"
@@ -32,13 +33,22 @@ rule purecn_coverage:
 
 
 rule purecn_coverage_list:
+    # Split by sex, not just probe type: cnvkit_fix trims each normal's .cnr
+    # to the bins usable in its sex-matched reference (reference_m.cnn vs
+    # reference_f.cnn mask different bins, mostly chrX/chrY), so male and
+    # female normals never share one interval set. PureCN's
+    # createNormalDatabase() requires every coverage file in a NormalDB to
+    # have identical intervals, so male and female normals must go into
+    # separate NormalDBs.
     input:
         cov=lambda wc: expand(
             f"{config['outdir']}/PON/purecn/coverage/{{sample}}.txt",
-            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+            sample=samples[
+                (samples["probes"] == wc.probes) & (samples["sex"] == wc.sex)
+            ].index.tolist(),
         ),
     output:
-        list=f"{config['outdir']}/PON/purecn/{{probes}}/coverage_files.list",
+        list=f"{config['outdir']}/PON/purecn/{{probes}}/coverage_files_{{sex}}.list",
     run:
         with open(output.list, "w") as f:
             f.write("\n".join(input.cov) + "\n")
@@ -153,32 +163,39 @@ rule genotype_gvcfs:
 
 
 rule purecn_normaldb:
+    # normal-panel stays pooled across both sexes per probe type: the
+    # mapping-bias/beta-binomial step matches VCF samples by name against
+    # the coverage list and tolerates a superset fine (confirmed — it
+    # completed cleanly against the mixed-sex joint VCF before the
+    # interval-mismatch crash below it). Only createNormalDatabase()'s
+    # per-interval coverage matrix needs the sex split.
     input:
-        coverage_list=f"{config['outdir']}/PON/purecn/{{probes}}/coverage_files.list",
+        coverage_list=f"{config['outdir']}/PON/purecn/{{probes}}/coverage_files_{{sex}}.list",
         joint_vcf=f"{config['outdir']}/PON/purecn/{{probes}}/normals_{{probes}}.joint.vcf.gz",
     output:
-        normaldb=f"{config['outdir']}/PON/purecn/{{probes}}/normalDB_{{probes}}_hg38.rds",
-        mapping_bias=f"{config['outdir']}/PON/purecn/{{probes}}/mapping_bias_{{probes}}_hg38.rds",
-        hq_sites=f"{config['outdir']}/PON/purecn/{{probes}}/mapping_bias_hq_sites_{{probes}}_hg38.bed",
-        weights_png=f"{config['outdir']}/PON/purecn/{{probes}}/interval_weights_{{probes}}_hg38.png",
+        normaldb=f"{config['outdir']}/PON/purecn/{{probes}}/normalDB_{{probes}}_{{sex}}_hg38.rds",
+        mapping_bias=f"{config['outdir']}/PON/purecn/{{probes}}/mapping_bias_{{probes}}_{{sex}}_hg38.rds",
+        hq_sites=f"{config['outdir']}/PON/purecn/{{probes}}/mapping_bias_hq_sites_{{probes}}_{{sex}}_hg38.bed",
+        weights_png=f"{config['outdir']}/PON/purecn/{{probes}}/interval_weights_{{probes}}_{{sex}}_hg38.png",
         # NormalDB.R only writes this file when low.coverage.targets is
         # non-empty; touch it unconditionally afterward so Snakemake's
         # declared-output contract holds on kits where it isn't produced.
-        low_coverage=f"{config['outdir']}/PON/purecn/{{probes}}/low_coverage_targets_{{probes}}_hg38.bed",
+        low_coverage=f"{config['outdir']}/PON/purecn/{{probes}}/low_coverage_targets_{{probes}}_{{sex}}_hg38.bed",
     log:
-        "logs/purecn_normaldb/purecn_normaldb_{probes}.log",
+        "logs/purecn_normaldb/purecn_normaldb_{probes}_{sex}.log",
     container:
         config["containers"]["purecn"]
     params:
         out_dir=lambda wc, output: os.path.dirname(output.normaldb),
         genome="hg38",
+        assay=lambda wc: f"{wc.probes}_{wc.sex}",
     shell:
         """
         PURECN_SCRIPT=$(Rscript -e 'cat(system.file("extdata", "NormalDB.R", package="PureCN"))')
         Rscript $PURECN_SCRIPT \
             --out-dir {params.out_dir} \
             --genome {params.genome} \
-            --assay {wildcards.probes} \
+            --assay {params.assay} \
             --coverage-files {input.coverage_list} \
             --normal-panel {input.joint_vcf} \
             --force \
