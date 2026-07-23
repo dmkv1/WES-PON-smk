@@ -122,6 +122,11 @@ rule all:
             f"{outdir}/PON/purecn/{probes}/mapping_bias_{probes}_{sex}_hg38.rds"
             for probes, sex in PROBE_SEX_COMBOS
         ],
+        # Interval-consistency gate: canonical-only + identical NormalDB bins
+        [
+            f"{outdir}/purecn/{probes}/interval_check_{sex}.ok"
+            for probes, sex in PROBE_SEX_COMBOS
+        ],
         # Aggregated QC report
         f"{outdir}/qc/multiqc_report.html",
         # Recalibrated BAMs

@@ -57,6 +57,17 @@ params:
     # calling pipeline's BQSR intervals for the PON normals to stay comparable.
     interval_padding: 100
   cnvkit:
+    # Off-target (antitarget) bins. The SureSelect V6/V8 +UTR captures are so
+    # efficient that realized off-target depth is ~0.1-0.8x (vs 45-66x on
+    # target), giving antitarget bins a log2 SD of 1-5 vs ~0.5 on target: pure
+    # noise, ~120-140k bins of it. Widening the bins cannot recover signal that
+    # is not there, so for these exomes off-target is dropped (PureCN best
+    # practices: "in case of whole-exome sequencing, ignore off-target reads").
+    # false -> autobin still emits targets.bed but antitargets.bed is emptied,
+    # so the reference, NormalDB, and every downstream tumor .cnr are
+    # target-only. Set true only for sparse gene panels where off-target reads
+    # carry real signal.
+    use_offtarget: false
     autobin:
       method: "hybrid"
       bp_per_bin: 100000

@@ -5,7 +5,7 @@ rule cnvkit_access:
     input:
         refg=config["refs"]["genome_human"],
     output:
-        access=f"{config['outdir']}/PON/cnvkit/access.bed",
+        access=f"{config['outdir']}/cnvkit/access.bed",
     log:
         "logs/cnvkit_access/cnvkit_access.log",
     container:
@@ -18,6 +18,14 @@ rule cnvkit_access:
 rule cnvkit_strip_covered:
     # CNVkit chokes on the Agilent browser/track header lines, so strip them to a
     # plain BED here (GATK/mosdepth tolerate the header and use the file directly).
+    # Also restrict to canonical contigs (chr1-22, X, Y): this is the single
+    # interval-definition chokepoint for the CNV arm. The pipeline is not
+    # ALT-aware (no bwa-postalt), so ALT/random/unplaced bins carry MAPQ-0
+    # multi-mapped signal and must not seed the CNVkit target set, the PON
+    # reference, or the PureCN NormalDB. Downstream tumor .cnr sets are canonical,
+    # so keeping them here would break PureCN's identical() interval check.
+    # Germline paths (HaplotypeCaller/GenomicsDBImport) read the raw covered BED
+    # directly and are intentionally left untouched.
     input:
         covered=lambda wc: config["probe_configs"][wc.probes]["covered_bedfile"],
     output:
@@ -25,7 +33,11 @@ rule cnvkit_strip_covered:
     log:
         "logs/cnvkit_strip_covered/cnvkit_strip_covered_{probes}.log",
     shell:
-        "grep -vE '^(browser|track|#)' {input.covered} > {output} 2> {log}"
+        r"""
+        grep -vE '^(browser|track|#)' {input.covered} \
+            | grep -E $'^chr([1-9]|1[0-9]|2[0-2]|X|Y)\t' \
+            > {output} 2> {log}
+        """
 
 
 rule cnvkit_autobin:
@@ -33,7 +45,7 @@ rule cnvkit_autobin:
         covered_bed=f"work/cnvkit/{{probes}}.covered.bed",
         refflat=config["refs"]["refflat"],
         refg=config["refs"]["genome_human"],
-        access=f"{config['outdir']}/PON/cnvkit/access.bed",
+        access=f"{config['outdir']}/cnvkit/access.bed",
         bams=lambda wc: expand(
             f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
             sample=samples[samples["probes"] == wc.probes].index.tolist(),
@@ -57,7 +69,14 @@ rule cnvkit_autobin:
         target_max_size=config["params"]["cnvkit"]["autobin"]["target_max_size"],
         antitarget_min_size=config["params"]["cnvkit"]["autobin"]["antitarget_min_size"],
         antitarget_max_size=config["params"]["cnvkit"]["autobin"]["antitarget_max_size"],
+        use_offtarget=config["params"]["cnvkit"]["use_offtarget"],
     shell:
+        # autobin always writes both beds; when off-target is disabled the
+        # antitarget bed is truncated to empty afterward. An empty antitarget
+        # BED is the CNVkit amplicon-mode path: `cnvkit.py coverage` emits a
+        # header-only .cnn, and `reference`/`fix` build target-only artifacts —
+        # so the PON reference, PureCN NormalDB, and every downstream tumor .cnr
+        # become target-only with no other rule change.
         """
         cnvkit.py autobin {input.bams} \
             -m {params.method} \
@@ -73,6 +92,9 @@ rule cnvkit_autobin:
             --target-output-bed {output.targets} \
             --antitarget-output-bed {output.antitargets} \
             >{log} 2>&1
+        if [ "{params.use_offtarget}" != "True" ]; then
+            : > {output.antitargets}
+        fi
         """
 
 
