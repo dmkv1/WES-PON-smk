@@ -9,9 +9,8 @@ downstream would catch it, so it is caught here.
 The comparison is against the caller's published `main`, not against whatever
 happens to sit in a sibling working tree: a local checkout can be mid-edit, on a
 feature branch, or simply stale, and agreeing with it proves nothing. Whole
-files are compared rather than individual objects, because unlike
-`fastq_header.py` in the caller -- which vendors part of wesingest and adds to
-it -- these two files are vendored entire and add nothing.
+files are compared rather than individual objects, because both are vendored
+entire and add nothing of their own.
 
 Upstream resolution, in order:
 
@@ -21,8 +20,7 @@ Upstream resolution, in order:
     3. skip
 
 Skipping keeps a vendored deployment installable with no access to the caller
-repository, which is the same policy as the caller's own test_vendored_parser.py.
-Set WES_CALLER_REF to a tag (`v1.1.0`) to pin the vendored copy to a caller
+repository. Set WES_CALLER_REF to a tag (`v1.1.0`) to pin the vendored copy to a caller
 release; the default tracks `main` so a divergence goes red as soon as it lands.
 """
 

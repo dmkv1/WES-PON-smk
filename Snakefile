@@ -62,9 +62,9 @@ if _unknown_kits:
         f"probe_configs in config.yaml, with its capture_kit token."
     )
 
-# Sex is not in a FASTQ and not in the catalogue; it comes from the samplesheet,
-# which wesingest fills from catalogue/sample_annotations.tsv. cnvkit_reference
-# and purecn_normaldb both split on it, so an unknown one cannot be carried.
+# Sex is not recoverable from a FASTQ; it has to come from the samplesheet.
+# cnvkit_reference and purecn_normaldb both split on it, so an unknown one
+# cannot be carried.
 _bad_sex = samples[~samples["gender"].isin(["m", "f"])]
 if not _bad_sex.empty:
     raise ValueError(
