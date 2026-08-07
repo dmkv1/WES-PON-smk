@@ -17,4 +17,4 @@ rule mosdepth:
         prefix=lambda wc, output: output.summary.replace(".mosdepth.summary.txt", ""),
     shell:
         "mosdepth --by {input.regions_bed} --thresholds 10,20,30,50 "
-        "{params.prefix} {input.bam} > {log} 2>&1"
+        "--no-per-base {params.prefix} {input.bam} > {log} 2>&1"
