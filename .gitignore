@@ -9,3 +9,12 @@ tmp/
 *.pyc
 __pycache__/
 *.log
+
+# Host configuration: reference paths in the first, machine capacity in the
+# second. Copy each .example alongside itself and edit. The examples are
+# tracked; the working copies are not.
+/config.yaml
+/profiles/default/config.yaml
+
+# Cohort definition. Generated per run, and it carries sample identifiers.
+*.csv

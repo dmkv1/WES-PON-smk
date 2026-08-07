@@ -37,7 +37,14 @@ conda activate snakemake
 
 ### 2. Provide reference files
 
-Edit `config.yaml → refs` to point at your copies:
+`config.yaml` holds the run settings. The repository tracks `config.yaml.example` and
+ignores `config.yaml`, so your host paths stay out of git. Copy the example first:
+
+```bash
+cp config.yaml.example config.yaml
+```
+
+Then repoint every `/path/to/...` placeholder. Under `refs`:
 
 - `genome_human` — BWA-indexed reference FASTA (the Broad hg38 bundle, with `.fai`/`.dict`).
 - `known_sites` — dbSNP, known indels, Mills (with `.idx`/`.tbi` siblings; GATK finds them).
@@ -51,28 +58,65 @@ Under `config.yaml → probe_configs`, each kit needs:
 - `coverage_bedfile` — the kit's **Covered** BED, header-stripped (CNVkit target derivation).
 - `library_prep` — label used in BAM read-group `LB`.
 
-The key name (e.g. `SureSelectV6UTR`) is what you put in the `probes` column of the
-sample sheet and becomes the `{probes}` wildcard in output paths.
+The key name (e.g. `SureSelectV6UTR`) becomes the `{probes}` wildcard in output paths,
+and is what the calling pipeline's `panel_of_normals` paths point at. The sample sheet
+does not carry it: each key declares a `capture_kit` token, and the sheet's
+`capture_kit` column is matched against those tokens.
 
 ### 4. Build the sample sheet
 
-`samples.csv` with columns:
+`samplesheet.csv`, the same schema the calling pipeline uses:
 
-| column    | meaning |
-|-----------|---------|
-| `ID`      | unique sample id (used in all output filenames) |
-| `sex`     | `m` or `f` (drives CNVkit `--sample-sex`; validated at startup) |
-| `probes`  | a key from `probe_configs` |
-| `R1`,`R2` | absolute paths to paired FASTQ files |
+| column           | meaning |
+|------------------|---------|
+| `ID`          | sample group identifier, usually a patient ID. No `_`, `.` or `/` |
+| `sample`      | sample identifier, unique across the whole cohort (this pipeline has no run dimension to tell two same-named samples apart) |
+| `gender`      | `m` or `f`. Drives the CNVkit `--sample-sex` and the per-sex PureCN normal database; validated at startup |
+| `capture_kit` | a `capture_kit` token from `probe_configs` |
+| `fq1`, `fq2`  | path to the R1/R2 FASTQ, or a glob matching several. A glob expands to one alignment unit per matched pair |
 
-Read-group info (RGID/PU) is parsed from the first FASTQ header automatically.
-Point to a different sheet via `config.yaml → samples_csv`.
+Optional `flowcell`, `lane`, `barcode` and `library` columns override the read groups
+per row; otherwise they are derived from the FASTQ headers and filenames. The rules are
+the caller's — `workflow/scripts/units.py` is vendored from it verbatim so that normals
+and tumors resolve read groups identically.
+
+The caller's schema adds `sample_type` and `tumor_fraction`. This pipeline takes no
+position on either — every sample it is given is a normal, and there is no tumor
+fraction to speak of — so both are accepted, carried through to
+`results/metadata/samples.tsv` as provenance, and otherwise ignored. One generated
+sheet therefore feeds both pipelines, and a sheet written for this one alone can leave
+them out.
+
+Point to a different sheet via `config.yaml → samplesheet`.
+
+In this lab the sheet is generated from the catalogue:
+
+```bash
+python3 ../../scripts/ingest.py samplesheet --out samplesheet.csv --types CTRL,BL
+```
+
+Nothing in the pipeline reads that tool or its catalogue; any sheet with these columns
+works, including a hand-written one.
 
 ### 5. Adjust run settings
 
-- `profiles/default/config.yaml` — total `cores`, and the Singularity bind mount
-  (`singularity-args`); add a `-B` for every host path your refs/FASTQs live under.
-- `config.yaml → resources` — per-job `threads` and Java heap (`java_min_gb`/`java_max_gb`).
+Machine capacity lives in the run profile, which is ignored by git like `config.yaml`.
+Copy its example too:
+
+```bash
+cp profiles/default/config.yaml.example profiles/default/config.yaml
+```
+
+Both examples are sized for a 16-thread, 64 GB machine. The two must be scaled
+together, or the scheduler's ceiling stops matching what a job actually takes:
+
+- `profiles/default/config.yaml` — total `cores` and the `resources.mem_mb` budget the
+  scheduler packs against.
+- `config.yaml → resources` — per-job `threads`, Java heap (`java_min_gb`/`java_max_gb`)
+  and the `mem_mb` each GATK job declares.
+
+The container bind mount needs no setting: the Snakefile derives it from `refs.path`,
+so every reference and BED path must resolve under that root.
 - Optional Telegram run notifications: set `telegram_bot_env` to a file exporting
   `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`; leave empty to disable. `run_id` labels messages.
 
