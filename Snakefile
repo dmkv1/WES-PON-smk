@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import sys
 
 
 configfile: "config.yaml"
@@ -7,58 +8,117 @@ configfile: "config.yaml"
 os.environ["APPTAINER_BIND"] = config["refs"]["path"]
 os.environ["SINGULARITY_BIND"] = config["refs"]["path"]
 
-samples = pd.read_csv(config["samples_csv"])
-samples = samples.set_index("ID", drop=False)
+sys.path.insert(0, os.path.dirname(workflow.snakefile))
+from workflow.scripts.units import (
+    build_units,
+    row_types_mqc_table,
+    sample_renames,
+    units_mqc_table,
+    unit_index as _build_unit_index,
+    units_by_sample as _build_units_by_sample,
+)
+
+# Resolve the samplesheet into alignment units and a validated per-sample table.
+# A row naming a file pair yields one unit; a row whose fq1/fq2 are globs yields
+# one per pair. Read groups are derived from the data and overridden by the
+# optional flowcell/lane/library/barcode columns.
+#
+# units.py is vendored verbatim from WES-snakemake and must stay that way -- the
+# normals in this panel are only comparable to the tumors they normalise if both
+# pipelines resolve read groups identically. tests/test_vendored_units.py holds
+# that line against the caller's published main.
+sheet = pd.read_csv(config["samplesheet"])
+units, samples, rg_warnings = build_units(
+    sheet, strict=config.get("params", {}).get("rg", {}).get("strict", True)
+)
+for _warning in rg_warnings:
+    print(f"WARNING [read groups] {_warning}", file=sys.stderr)
 
 # --- Validation -----------------------------------------------------------
 
-missing_files = []
-for sid, row in samples.iterrows():
-    for col in ["R1", "R2"]:
-        if not os.path.exists(row[col]):
-            missing_files.append(f"  {sid}: {row[col]}")
-if missing_files:
-    raise FileNotFoundError("FASTQ files not found:\n" + "\n".join(missing_files))
-
-invalid_sex = samples[~samples["sex"].isin(["m", "f"])]
-if not invalid_sex.empty:
+# The caller keys its units on (run, sample) because it groups a patient's
+# samples into runs. A panel of normals is one flat cohort, so the key collapses
+# to the sample -- which holds only while sample names are unique across it.
+_duplicated = samples["sample"][samples["sample"].duplicated()].unique().tolist()
+if _duplicated:
     raise ValueError(
-        "Invalid sex values in samples.csv (must be 'm' or 'f'):\n"
-        + "\n".join(f"  {sid}: {row['sex']!r}" for sid, row in invalid_sex.iterrows())
+        "Sample names must be unique across the cohort; this panel has no run "
+        "dimension to tell two same-named samples apart:\n"
+        + "\n".join(f"  {s}" for s in sorted(_duplicated))
+    )
+
+# Every capture kit in the sheet must name a probe config. The sheet carries the
+# catalogue's kit token ("V6+UTR"); probe_configs is keyed by the Agilent kit
+# name, which is also what the PON output paths are named after and what the
+# caller's config points at. probe_configs.capture_kit joins the two.
+_kit_to_probes = {
+    cfg["capture_kit"]: probes for probes, cfg in config["probe_configs"].items()
+}
+_unknown_kits = sorted(set(samples["capture_kit"]) - set(_kit_to_probes))
+if _unknown_kits:
+    raise ValueError(
+        f"capture_kit {', '.join(_unknown_kits)} has no probe config. Known "
+        f"kits: {', '.join(sorted(_kit_to_probes))}. Add one under "
+        f"probe_configs in config.yaml, with its capture_kit token."
+    )
+
+# Sex is not in a FASTQ and not in the catalogue; it comes from the samplesheet,
+# which wesingest fills from catalogue/sample_annotations.tsv. cnvkit_reference
+# and purecn_normaldb both split on it, so an unknown one cannot be carried.
+_bad_sex = samples[~samples["gender"].isin(["m", "f"])]
+if not _bad_sex.empty:
+    raise ValueError(
+        "Every normal needs a known sex: the CNVkit reference and the PureCN "
+        "normal database are built per sex.\n"
+        + "\n".join(
+            f"  {row['sample']} (patient {row['ID']}): {row['gender']!r}"
+            for _, row in _bad_sex.iterrows()
+        )
+        + "\n\nFill the patients in catalogue/sample_annotations.tsv and "
+        "regenerate the sheet."
     )
 
 # --- Derived globals -------------------------------------------------------
 
 outdir = config["outdir"]
 
-PROBE_TYPES = samples["probes"].unique().tolist()
+unit_index = {
+    (row["sample"], row["unit"]): row for row in units.to_dict("records")
+}
+units_by_sample = {
+    sample: tokens
+    for (_run, sample), tokens in _build_units_by_sample(units).items()
+}
+
+probe_dict = {row["sample"]: _kit_to_probes[row["capture_kit"]]
+              for _, row in samples.iterrows()}
+sex_dict = {row["sample"]: row["gender"] for _, row in samples.iterrows()}
+
+PROBE_TYPES = sorted(set(probe_dict.values()))
 
 # Only (probes, sex) combinations actually present in the sample sheet.
 # Using the observed set avoids requesting CNVkit references for sexes that
 # have no samples for a given probe type.
-PROBE_SEX_COMBOS = (
-    samples[["probes", "sex"]]
-    .drop_duplicates()
-    .apply(lambda r: (r["probes"], r["sex"]), axis=1)
-    .tolist()
+PROBE_SEX_COMBOS = sorted(
+    {(probe_dict[s], sex_dict[s]) for s in probe_dict}
 )
 
-fastq_dict = {
-    sid: {"fq1": row["R1"], "fq2": row["R2"]} for sid, row in samples.iterrows()
-}
-probe_dict = {sid: row["probes"] for sid, row in samples.iterrows()}
-sex_dict = {sid: row["sex"] for sid, row in samples.iterrows()}
+SAMPLES = list(probe_dict)
 
 import workflow.scripts.common as common
 
-common.fastq_dict = fastq_dict
+common.units = units
+common.unit_index = unit_index
+common.units_by_sample = units_by_sample
 common.probe_dict = probe_dict
 common.sex_dict = sex_dict
+common.samples = samples
 common.config = config
 
 from workflow.scripts.common import *
 
 
+include: "workflow/rules/metadata.smk"
 include: "workflow/rules/alignment.smk"
 include: "workflow/rules/bqsr.smk"
 include: "workflow/rules/coverage.smk"
@@ -73,6 +133,9 @@ wildcard_constraints:
     sample="[^/.]+",
     probes="[^/._]+",
     sex="[mf]",
+    # Unit token: a real lane (L001) where one is known, else positional (u1).
+    # '.' separates it from the sample in {sample}.{unit} paths.
+    unit="L[0-9]{3}|u[0-9]+",
 
 
 def _tg_notify(msg):
@@ -129,8 +192,11 @@ rule all:
         ],
         # Aggregated QC report
         f"{outdir}/qc/multiqc_report.html",
+        # How each FASTQ pair's read group was decided
+        f"{outdir}/metadata/units.tsv",
+        f"{outdir}/metadata/samples.tsv",
         # Recalibrated BAMs
         expand(
             f"{outdir}/bam/{{sample}}/{{sample}}.bam",
-            sample=samples.index,
+            sample=SAMPLES,
         ),

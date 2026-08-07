@@ -1,6 +1,7 @@
 results/
 work/
 logs/
+snakemake.pid
 tmp/
 .snakemake/
 .cache/

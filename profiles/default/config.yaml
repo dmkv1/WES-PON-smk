@@ -1,6 +1,19 @@
 # Total Snakemake CPU cores cap
 cores: 48
 
+# Memory budget, in MB. Rules that declare mem_mb are scheduled against this
+# ceiling; without it the scheduler packs by cores alone and can start a
+# full-size GATK job (40 GB) beside a samtools sort (~19 GB) beside another
+# GATK job. Sized well under the host's 504 GB so the sort and GATK rules run
+# several at a time but never all at once.
+resources:
+  mem_mb: 262144
+
+# What a rule gets when it declares no mem_mb of its own: fastp, fastqc,
+# mosdepth, cnvkit coverage. Small, but not free.
+default-resources:
+  mem_mb: 4000
+
 use-conda: true
 use-singularity: true
 keep-going: true

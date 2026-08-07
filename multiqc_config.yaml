@@ -1,15 +1,24 @@
-# Consolidate the General Statistics table to one row per sample.
+# Consolidate each sample's MultiQC rows (mirrors WES-snakemake). Three tiers,
+# deliberately:
+#   - fastqc rows are per unit and per read ({sample}.{unit}_R1)
+#   - fastp rows are per unit ({sample}.{unit}); "_fastp" is stripped so the row
+#     keeps that name instead of fastp's internal read-name guess
+#   - everything computed on the finished BAM (MarkDuplicates, HsMetrics,
+#     mosdepth, BaseRecalibrator) lands on the bare {sample}
 #
-# Different tools derive the sample name from different internal fields, which
-# otherwise splits each sample across several rows:
-#   - Picard MarkDuplicates names from the INPUT bam recorded in the metrics
-#     header (work/bam/{sample}.fixmate.bam) -> strip the ".fixmate" suffix.
-#   - fastp names from the raw input FASTQ recorded in the json (batch-specific,
-#     e.g. ..._WES_S#_merged_R1_001). Force it to use our deterministic output
-#     filename ({sample}_fastp.json) instead, then strip "_fastp".
+# MarkDuplicates needs help to reach the third tier: its Picard module names the
+# row after the first INPUT it was given, which is now {sample}.{unit}.qgrp.bam,
+# so a four-lane sample's whole-sample duplication metric would be labelled
+# ".L001" and split off from that sample's other BAM metrics. Naming it from the
+# metrics filename instead gives {sample}.dupl_metrics, and the suffix is
+# stripped below.
+#
+# Single-unit samples are collapsed onto one row by results/qc/multiqc_renames.yaml,
+# generated per cohort because which samples have one unit depends on the sheet.
 use_filename_as_sample_name:
   - fastp
+  - picard/markdups
 
 extra_fn_clean_exts:
-  - ".fixmate"
   - "_fastp"
+  - ".dupl_metrics"

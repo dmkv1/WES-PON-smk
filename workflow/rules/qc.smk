@@ -42,13 +42,13 @@ rule bed_to_interval_list:
 
 rule fastqc:
     input:
-        fq1="work/fastq/{sample}/{sample}_R1.fq.gz",
-        fq2="work/fastq/{sample}/{sample}_R2.fq.gz",
+        fq1="work/fastq/{sample}/{sample}.{unit}_R1.fq.gz",
+        fq2="work/fastq/{sample}/{sample}.{unit}_R2.fq.gz",
     output:
-        zip1=f"{config['outdir']}/qc/fastqc/{{sample}}_R1_fastqc.zip",
-        zip2=f"{config['outdir']}/qc/fastqc/{{sample}}_R2_fastqc.zip",
+        zip1=f"{config['outdir']}/qc/fastqc/{{sample}}.{{unit}}_R1_fastqc.zip",
+        zip2=f"{config['outdir']}/qc/fastqc/{{sample}}.{{unit}}_R2_fastqc.zip",
     log:
-        "logs/fastqc/fastqc_{sample}.log",
+        "logs/fastqc/fastqc_{sample}.{unit}.log",
     conda:
         "../envs/qc.yaml"
     threads: 2
@@ -91,28 +91,36 @@ rule collect_hs_metrics:
 
 rule multiqc:
     input:
-        fastp_json=expand(
-            f"{config['outdir']}/qc/fastp/{{sample}}_fastp.json",
-            sample=samples.index,
-        ),
-        fastqc_zip=expand(
-            f"{config['outdir']}/qc/fastqc/{{sample}}_R{{read}}_fastqc.zip",
-            sample=samples.index,
-            read=[1, 2],
-        ),
+        # fastp and fastqc are per unit; everything computed on the finished BAM
+        # is per sample. multiqc_config.yaml and the generated renames collapse
+        # the two tiers back onto one row per sample where that is meaningful.
+        fastp_json=[
+            f"{config['outdir']}/qc/fastp/{sample}.{unit}_fastp.json"
+            for sample in SAMPLES
+            for unit in get_units(sample)
+        ],
+        fastqc_zip=[
+            f"{config['outdir']}/qc/fastqc/{sample}.{unit}_R{read}_fastqc.zip"
+            for sample in SAMPLES
+            for unit in get_units(sample)
+            for read in (1, 2)
+        ],
         dupl_metrics=expand(
             f"{config['outdir']}/qc/metrics/{{sample}}.dupl_metrics.txt",
-            sample=samples.index,
+            sample=SAMPLES,
         ),
         mosdepth=expand(
             f"{config['outdir']}/qc/metrics/{{sample}}.mosdepth.summary.txt",
-            sample=samples.index,
+            sample=SAMPLES,
         ),
         hs_metrics=expand(
             f"{config['outdir']}/qc/metrics/{{sample}}.hs_metrics.txt",
-            sample=samples.index,
+            sample=SAMPLES,
         ),
+        units_mqc=f"{config['outdir']}/qc/units_rg_mqc.tsv",
+        row_type_mqc=f"{config['outdir']}/qc/row_type_mqc.tsv",
         config="multiqc_config.yaml",
+        renames=f"{config['outdir']}/qc/multiqc_renames.yaml",
     output:
         f"{config['outdir']}/qc/multiqc_report.html",
     log:
@@ -122,5 +130,5 @@ rule multiqc:
     params:
         outdir=config["outdir"],
     shell:
-        "multiqc -c {input.config} {params.outdir}/ logs/ "
+        "multiqc -c {input.config} -c {input.renames} {params.outdir}/ logs/ "
         "-o {params.outdir}/qc --force > {log} 2>&1"

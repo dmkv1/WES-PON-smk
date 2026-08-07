@@ -2,11 +2,11 @@ rule genomicsdb_import:
     input:
         vcfs=lambda wc: expand(
             f"{config['outdir']}/vcf/{{sample}}/{{sample}}.vcf",
-            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+            sample=get_samples(wc.probes),
         ),
         idxs=lambda wc: expand(
             f"{config['outdir']}/vcf/{{sample}}/{{sample}}.vcf.idx",
-            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+            sample=get_samples(wc.probes),
         ),
         refg=config["refs"]["genome_human"],
         regions=lambda wc: config["probe_configs"][wc.probes]["covered_bedfile"],

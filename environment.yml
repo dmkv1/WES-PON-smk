@@ -7,3 +7,5 @@ dependencies:
   - snakemake>=8.29.3
   - pandas>=2.0
   - conda
+  - pyyaml
+  - pytest

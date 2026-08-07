@@ -43,9 +43,7 @@ rule purecn_coverage_list:
     input:
         cov=lambda wc: expand(
             f"{config['outdir']}/purecn/coverage/{{sample}}.txt",
-            sample=samples[
-                (samples["probes"] == wc.probes) & (samples["sex"] == wc.sex)
-            ].index.tolist(),
+            sample=get_samples(wc.probes, wc.sex),
         ),
     output:
         list=f"{config['outdir']}/purecn/{{probes}}/coverage_files_{{sex}}.list",
@@ -161,11 +159,11 @@ rule genomicsdb_import_germline:
     input:
         gvcfs=lambda wc: expand(
             f"{config['outdir']}/gvcf/{{sample}}/{{sample}}.g.vcf.gz",
-            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+            sample=get_samples(wc.probes),
         ),
         tbis=lambda wc: expand(
             f"{config['outdir']}/gvcf/{{sample}}/{{sample}}.g.vcf.gz.tbi",
-            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+            sample=get_samples(wc.probes),
         ),
         refg=config["refs"]["genome_human"],
         regions=lambda wc: config["probe_configs"][wc.probes]["covered_bedfile"],

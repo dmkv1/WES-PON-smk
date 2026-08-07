@@ -48,11 +48,11 @@ rule cnvkit_autobin:
         access=f"{config['outdir']}/cnvkit/access.bed",
         bams=lambda wc: expand(
             f"{config['outdir']}/bam/{{sample}}/{{sample}}.bam",
-            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+            sample=get_samples(wc.probes),
         ),
         bais=lambda wc: expand(
             f"{config['outdir']}/bam/{{sample}}/{{sample}}.bai",
-            sample=samples[samples["probes"] == wc.probes].index.tolist(),
+            sample=get_samples(wc.probes),
         ),
     output:
         targets=f"{config['outdir']}/PON/cnvkit/{{probes}}/targets.bed",
@@ -157,15 +157,11 @@ rule cnvkit_reference:
     input:
         target_covs=lambda wc: expand(
             f"{config['outdir']}/coverage/{{sample}}/{{sample}}.targetcoverage.cnn",
-            sample=samples[
-                (samples["probes"] == wc.probes) & (samples["sex"] == wc.sex)
-            ].index.tolist(),
+            sample=get_samples(wc.probes, wc.sex),
         ),
         antitarget_covs=lambda wc: expand(
             f"{config['outdir']}/coverage/{{sample}}/{{sample}}.antitargetcoverage.cnn",
-            sample=samples[
-                (samples["probes"] == wc.probes) & (samples["sex"] == wc.sex)
-            ].index.tolist(),
+            sample=get_samples(wc.probes, wc.sex),
         ),
         refg=config["refs"]["genome_human"],
     output:
