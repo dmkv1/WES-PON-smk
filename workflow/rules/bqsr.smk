@@ -15,6 +15,7 @@ rule base_recalibration:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     params:
         tmp_dir="tmp",
         known_sites=lambda _: " ".join(
@@ -50,6 +51,7 @@ rule apply_bqsr:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:

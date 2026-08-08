@@ -20,6 +20,7 @@ rule genomicsdb_import:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:
@@ -53,6 +54,7 @@ rule create_somatic_pon:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:

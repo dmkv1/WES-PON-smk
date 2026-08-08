@@ -135,6 +135,7 @@ rule haplotypecaller_gvcf:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:
@@ -177,6 +178,7 @@ rule genomicsdb_import_germline:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:
@@ -210,6 +212,7 @@ rule genotype_gvcfs:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:
@@ -256,6 +259,10 @@ rule purecn_normaldb:
         pon_dir=lambda wc, output: os.path.dirname(output.normaldb),
         genome="hg38",
         assay=lambda wc: f"{wc.probes}_{wc.sex}",
+    resources:
+        # createNormalDatabase() holds a per-interval coverage matrix over every
+        # normal in the panel, and the mapping-bias step loads the joint VCF.
+        mem_mb=32768,
     shell:
         """
         mkdir -p {params.pon_dir}

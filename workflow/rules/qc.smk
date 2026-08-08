@@ -25,6 +25,7 @@ rule bed_to_interval_list:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     wildcard_constraints:
         kind="bait|target",
     params:
@@ -74,6 +75,7 @@ rule collect_hs_metrics:
     resources:
         java_min_gb=config["resources"]["java_min_gb"],
         java_max_gb=config["resources"]["java_max_gb"],
+        mem_mb=config["resources"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:
@@ -129,6 +131,9 @@ rule multiqc:
         "../envs/qc.yaml"
     params:
         outdir=config["outdir"],
+    resources:
+        # Parses every module's output for the whole cohort into one report.
+        mem_mb=16384,
     shell:
         "multiqc -c {input.config} -c {input.renames} {params.outdir}/ logs/ "
         "-o {params.outdir}/qc --force > {log} 2>&1"

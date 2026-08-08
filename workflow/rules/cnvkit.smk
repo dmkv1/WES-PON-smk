@@ -117,6 +117,9 @@ rule cnvkit_coverage:
     container:
         config["containers"]["cnvkit"]
     threads: config["resources"]["threads"]
+    resources:
+        # pysam BAM traversal, one worker process per -p thread.
+        mem_mb=8192,
     shell:
         """
         cnvkit.py coverage {input.bam} {input.targets} \

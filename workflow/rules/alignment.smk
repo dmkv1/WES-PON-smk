@@ -66,6 +66,10 @@ rule bwa_map:
     conda:
         "../envs/bwamem.yaml"
     threads: config["resources"]["threads"]
+    resources:
+        # The hg38 BWA index is ~5.5 GB resident and shared across threads; the
+        # rest is per-thread alignment buffers plus the piped samtools fixmate.
+        mem_mb=10240,
     shell:
         "(bwa mem -Y -K 100000000 -t {threads} -R '{params.rg}' "
         "{input.refg} {input.fq1} {input.fq2} "
