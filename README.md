@@ -1,5 +1,9 @@
 # WES-PON-smk
 
+[![version](https://img.shields.io/github/v/tag/dmkv1/WES-PON-smk?label=version&sort=semver)](https://github.com/dmkv1/WES-PON-smk/blob/development/CHANGELOG.md)
+[![tests](https://github.com/dmkv1/WES-PON-smk/actions/workflows/tests.yml/badge.svg)](https://github.com/dmkv1/WES-PON-smk/actions/workflows/tests.yml)
+![coverage](.github/badges/coverage.svg)
+
 A Snakemake pipeline that builds **Panels of Normals (PON)** for tumor-only
 [Whole Exome Sequencing (WES) analysis](https://github.com/dmkv1/WES-snakemake). Tumor-only calling needs a PON to remove
 recurrent germline and artifact signal. From a set of normal samples this
