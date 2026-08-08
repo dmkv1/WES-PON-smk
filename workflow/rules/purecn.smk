@@ -140,6 +140,7 @@ rule haplotypecaller_gvcf:
         tmp_dir="tmp",
     shell:
         """
+        mkdir -p {params.tmp_dir}
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             HaplotypeCaller \
             -R {input.refg} -I {input.bam} \
@@ -183,6 +184,7 @@ rule genomicsdb_import_germline:
         tmp_dir="tmp",
     shell:
         """
+        mkdir -p {params.tmp_dir}
         rm -rf {output.db}
         vcf_args=$(for v in {input.gvcfs}; do echo -V $v; done | tr '\\n' ' ')
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
@@ -217,6 +219,7 @@ rule genotype_gvcfs:
         tmp_dir="tmp",
     shell:
         """
+        mkdir -p {params.tmp_dir}
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             GenotypeGVCFs \
             -R {input.refg} \

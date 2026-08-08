@@ -105,6 +105,7 @@ rule mark_duplicates:
         mem_mb=config["resources"]["mem_mb"],
     shell:
         """
+        mkdir -p {params.tmp_dir}
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             MarkDuplicates \
             {params.inputs} \
@@ -142,6 +143,7 @@ rule sort_bam:
         bai=temp("work/bam/{sample}.md.bai"),
     params:
         sort_mem=config["resources"]["sort_mem"],
+        tmp_dir="tmp",
     log:
         "logs/sort_bam/sort_bam_{sample}.log",
     conda:
@@ -150,6 +152,9 @@ rule sort_bam:
     resources:
         mem_mb=_sort_mem_mb(),
     shell:
-        "samtools sort -@ {threads} -m {params.sort_mem} --write-index "
-        "-T tmp/{wildcards.sample}.sort "
-        "-o {output.bam}##idx##{output.bai} {input} 2> {log}"
+        """
+        mkdir -p {params.tmp_dir}
+        samtools sort -@ {threads} -m {params.sort_mem} --write-index \
+            -T {params.tmp_dir}/{wildcards.sample}.sort \
+            -o {output.bam}##idx##{output.bai} {input} 2> {log}
+        """

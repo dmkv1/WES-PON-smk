@@ -24,6 +24,7 @@ rule base_recalibration:
         interval_padding=config["params"]["bqsr"]["interval_padding"],
     shell:
         """
+        mkdir -p {params.tmp_dir}
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             BaseRecalibrator \
             -I {input.bam} -R {input.refg} \
@@ -56,6 +57,7 @@ rule apply_bqsr:
         tmp_dir="tmp",
     shell:
         """
+        mkdir -p {params.tmp_dir}
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             ApplyBQSR \
             -R {input.refg} -I {input.bam} \

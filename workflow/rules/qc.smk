@@ -32,6 +32,7 @@ rule bed_to_interval_list:
         tmp_dir="tmp",
     shell:
         """
+        mkdir -p {params.tmp_dir}
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             BedToIntervalList \
             -I {input.bed} -O {output} \
@@ -80,6 +81,7 @@ rule collect_hs_metrics:
         tmp_dir="tmp",
     shell:
         """
+        mkdir -p {params.tmp_dir}
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             CollectHsMetrics \
             -I {input.bam} -O {output.metrics} \
