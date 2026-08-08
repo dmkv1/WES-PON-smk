@@ -60,22 +60,44 @@ probe_configs:
     target_regions_bedfile: "/path/to/refs/SureSelectHumanAllExon/V8UTR/S33613271_Regions.bed"
 
 # Sized for a 16-thread, 64 GB host, which is the common 4 GB per thread server
-# ratio. Scale every value with the machine, together with cores and
-# resources.mem_mb in profiles/default/config.yaml. The budget:
+# ratio. Scale every value with the machine, together with cores, resources.mem_mb
+# and resources.io_heavy in profiles/default/config.yaml. The budget:
 #
 #   64 GB total, of which the profile offers 56 GB to the scheduler.
-#   One GATK job holds 40 GB (32 GB heap + 25% non-heap), so GATK rules run one
-#   at a time and roughly 16 GB stays free for the small rules beside them.
+#   One heavy GATK job holds 40 GB (32 GB heap + 25% non-heap), so the cohort
+#   rules run one at a time. The light per-sample stages hold 10 GB, so five fit
+#   in the same budget.
 resources:
   threads: 16
-  java_max_gb: 32
-  java_min_gb: 8       # start small; the JVM grows to java_max_gb on demand
-  mem_mb: 40960        # java_max_gb + 25% non-heap overhead, for scheduler tracking
   # Per-thread sort buffer for `samtools sort`. Set explicitly because the
   # samtools default (768M) is per thread, so it scales with -@ into a spike far
   # larger than intended. sort_bam declares sort_mem x threads to the scheduler,
   # so 1G x 16 threads = 16 GB for the sort itself.
   sort_mem: "1G"
+
+  # GATK memory tiers. Each tier is a JVM heap window plus the mem_mb the
+  # scheduler reserves against the profile budget: the heap ceiling plus 25%
+  # non-heap overhead. java_min_gb starts small; the JVM grows to java_max_gb on
+  # demand. Rules pick a tier by real peak heap on a WES BAM, so that the
+  # single-threaded per-sample stages, which use 2-4 GB, do not each reserve the
+  # cohort-scale figure and throttle the run to a handful of concurrent jobs.
+  gatk:
+    # BaseRecalibrator, ApplyBQSR, CollectHsMetrics, BedToIntervalList.
+    light:
+      java_min_gb: 2
+      java_max_gb: 8
+      mem_mb: 10240
+    # MarkDuplicates (queryname-streaming), Mutect2, HaplotypeCaller.
+    medium:
+      java_min_gb: 4
+      java_max_gb: 16
+      mem_mb: 20480
+    # GenomicsDBImport, GenotypeGVCFs, CreateSomaticPanelOfNormals: cohort-wide,
+    # and the only rules that genuinely need the large heap.
+    heavy:
+      java_min_gb: 8
+      java_max_gb: 32
+      mem_mb: 40960
 
 params:
   rg:

@@ -100,9 +100,11 @@ rule mark_duplicates:
     container:
         config["containers"]["gatk"]
     resources:
-        java_min_gb=config["resources"]["java_min_gb"],
-        java_max_gb=config["resources"]["java_max_gb"],
-        mem_mb=config["resources"]["mem_mb"],
+        java_min_gb=config["resources"]["gatk"]["medium"]["java_min_gb"],
+        java_max_gb=config["resources"]["gatk"]["medium"]["java_max_gb"],
+        mem_mb=config["resources"]["gatk"]["medium"]["mem_mb"],
+        # Reads a full BAM and writes a full BAM; see apply_bqsr.
+        io_heavy=1,
     shell:
         """
         mkdir -p {params.tmp_dir}

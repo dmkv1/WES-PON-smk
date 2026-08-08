@@ -14,11 +14,14 @@ rule mutect2_single_sample:
         "logs/Mutect2/Mutect2_{sample}.log",
     container:
         config["containers"]["gatk"]
-    threads: config["resources"]["threads"]
+    # pairHMM is the only threaded stage and it scales poorly past a few
+    # threads. With one job per normal, throughput comes from running many
+    # samples at once rather than widening each one.
+    threads: 2
     resources:
-        java_min_gb=config["resources"]["java_min_gb"],
-        java_max_gb=config["resources"]["java_max_gb"],
-        mem_mb=config["resources"]["mem_mb"],
+        java_min_gb=config["resources"]["gatk"]["medium"]["java_min_gb"],
+        java_max_gb=config["resources"]["gatk"]["medium"]["java_max_gb"],
+        mem_mb=config["resources"]["gatk"]["medium"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:
@@ -29,6 +32,7 @@ rule mutect2_single_sample:
             -R {input.refg} -I {input.bam} \
             --intervals {input.regions} \
             --max-mnp-distance 0 \
+            --native-pair-hmm-threads {threads} \
             -O {output.vcf} \
             --tmp-dir {params.tmp_dir} \
             >{log} 2>&1

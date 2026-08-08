@@ -174,11 +174,20 @@ cp profiles/default/config.yaml.example profiles/default/config.yaml
 Both examples are sized for a 16-thread, 64 GB machine. Scale the two together,
 or the scheduler's ceiling stops to agree with what a job really takes:
 
-- `profiles/default/config.yaml` - the total `cores` and the `resources.mem_mb`
-  budget that the scheduler packs against.
-- `config.yaml -> resources` - the per-job `threads`, the Java heap
-  (`java_min_gb`/`java_max_gb`), the `mem_mb` that each GATK job declares, and
-  the per-thread `sort_mem` for `samtools sort`.
+- `profiles/default/config.yaml` - the total `cores`, the `resources.mem_mb`
+  budget that the scheduler packs against, and `resources.io_heavy`, which caps
+  how many whole-BAM rewrites (`mark_duplicates`, `apply_bqsr`) run at once.
+- `config.yaml -> resources` - the per-job `threads`, the per-thread `sort_mem`
+  for `samtools sort`, and the `gatk` memory tiers.
+
+The `gatk` block sets three tiers (`light`, `medium`, `heavy`), each a Java heap
+window plus the `mem_mb` a job in that tier declares to the scheduler. Rules are
+assigned a tier by real peak heap on a WES BAM: the single-threaded per-sample
+stages (BaseRecalibrator, ApplyBQSR, CollectHsMetrics) are `light`, and only the
+cohort-wide rules (GenomicsDBImport, GenotypeGVCFs, CreateSomaticPanelOfNormals)
+are `heavy`. Giving every GATK rule the heavy figure makes `mem_mb`, rather than
+actual RAM, the binding constraint and leaves most of the host idle whenever the
+DAG frontier is one of the light stages.
 
 The container bind mount needs no setting. The Snakefile builds it from
 `refs.path`.

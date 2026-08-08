@@ -13,8 +13,15 @@ cores: 16
 # full-size GATK job (40 GB) beside a samtools sort (~19 GB) beside another
 # GATK job. 56 GB of the 64 GB total: the rest stays with the OS and the page
 # cache.
+#
+# io_heavy caps the rules that read a whole BAM and write a whole BAM
+# (mark_duplicates, apply_bqsr), which each declare io_heavy=1. Their memory
+# tiers alone would let many run at once; on spinning disks that many concurrent
+# whole-BAM rewrites turn into seek thrash rather than throughput. Raise it on
+# NVMe, lower it on a single disk.
 resources:
   mem_mb: 57344
+  io_heavy: 4
 
 # What a rule gets when it declares no mem_mb of its own: fastp, fastqc,
 # mosdepth, cnvkit coverage. Small, but not free.

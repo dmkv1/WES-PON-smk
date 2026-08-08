@@ -173,7 +173,9 @@ rule cnvkit_reference:
         "logs/cnvkit_reference/cnvkit_reference_{probes}_{sex}.log",
     container:
         config["containers"]["cnvkit"]
-    threads: config["resources"]["threads"]
+    # `cnvkit.py reference` takes no -p; it pools the per-normal .cnn files in
+    # one process.
+    threads: 1
     params:
         sex=lambda wc: SEX_MAP[wc.sex],
     shell:

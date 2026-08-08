@@ -18,9 +18,9 @@ rule genomicsdb_import:
         config["containers"]["gatk"]
     threads: config["resources"]["threads"]
     resources:
-        java_min_gb=config["resources"]["java_min_gb"],
-        java_max_gb=config["resources"]["java_max_gb"],
-        mem_mb=config["resources"]["mem_mb"],
+        java_min_gb=config["resources"]["gatk"]["heavy"]["java_min_gb"],
+        java_max_gb=config["resources"]["gatk"]["heavy"]["java_max_gb"],
+        mem_mb=config["resources"]["gatk"]["heavy"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:
@@ -53,9 +53,9 @@ rule create_somatic_pon:
     container:
         config["containers"]["gatk"]
     resources:
-        java_min_gb=config["resources"]["java_min_gb"],
-        java_max_gb=config["resources"]["java_max_gb"],
-        mem_mb=config["resources"]["mem_mb"],
+        java_min_gb=config["resources"]["gatk"]["heavy"]["java_min_gb"],
+        java_max_gb=config["resources"]["gatk"]["heavy"]["java_max_gb"],
+        mem_mb=config["resources"]["gatk"]["heavy"]["mem_mb"],
     params:
         tmp_dir="tmp",
     shell:

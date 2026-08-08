@@ -13,9 +13,9 @@ rule base_recalibration:
     container:
         config["containers"]["gatk"]
     resources:
-        java_min_gb=config["resources"]["java_min_gb"],
-        java_max_gb=config["resources"]["java_max_gb"],
-        mem_mb=config["resources"]["mem_mb"],
+        java_min_gb=config["resources"]["gatk"]["light"]["java_min_gb"],
+        java_max_gb=config["resources"]["gatk"]["light"]["java_max_gb"],
+        mem_mb=config["resources"]["gatk"]["light"]["mem_mb"],
     params:
         tmp_dir="tmp",
         known_sites=lambda _: " ".join(
@@ -50,9 +50,13 @@ rule apply_bqsr:
     container:
         config["containers"]["gatk"]
     resources:
-        java_min_gb=config["resources"]["java_min_gb"],
-        java_max_gb=config["resources"]["java_max_gb"],
-        mem_mb=config["resources"]["mem_mb"],
+        java_min_gb=config["resources"]["gatk"]["light"]["java_min_gb"],
+        java_max_gb=config["resources"]["gatk"]["light"]["java_max_gb"],
+        mem_mb=config["resources"]["gatk"]["light"]["mem_mb"],
+        # Reads a full BAM and writes a full BAM. Memory no longer caps this
+        # rule, so io_heavy is what keeps the HDD array off a seek-thrash
+        # frontier of dozens of concurrent whole-BAM rewrites.
+        io_heavy=1,
     params:
         tmp_dir="tmp",
     shell:
