@@ -18,3 +18,8 @@ __pycache__/
 
 # Cohort definition. Generated per run, and it carries sample identifiers.
 *.csv
+
+# Per-cohort QC findings and the exclusion list derived from them. Same reason
+# as the samplesheet: they name samples.
+/docs/issues.md
+/docs/excluded_samples.txt
