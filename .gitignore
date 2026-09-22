@@ -23,3 +23,7 @@ __pycache__/
 # as the samplesheet: they name samples.
 /docs/issues.md
 /docs/excluded_samples.txt
+
+# one-off local rebuild tooling and its record
+/stash_unfiltered.sh
+/results_unfiltered/

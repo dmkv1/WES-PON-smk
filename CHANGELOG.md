@@ -24,6 +24,9 @@ PON versions.
   unchanged.
 * `interval_check_{sex}.ok` also asserts that the median chrX log2 of every
   normal's `.cnr` lies within ±0.3 of 0.
+* `units.py` is re-vendored from the caller. It accepts the optional
+  `known_ploidy` column, which this pipeline ignores. Read-group resolution is
+  unchanged.
 
 ## [1.0.0] - 2026-08-08
 

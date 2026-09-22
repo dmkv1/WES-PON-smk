@@ -150,8 +150,8 @@ columns override them per row: `flowcell`, `lane`, `barcode` and `library`. The
 `workflow/scripts/units.py` is vendored from it. Normals and tumors therefore
 resolve read groups identically.
 
-The caller's schema has two more optional columns, `sample_type` and
-`tumor_fraction`. This pipeline ignores both. Every sample it is given is a
+The caller's schema has three more optional columns, `sample_type`,
+`tumor_fraction` and `known_ploidy`. This pipeline ignores all three. Every sample it is given is a
 normal. If the columns are present, they are carried to
 `results/metadata/samples.tsv` as provenance. One generated sheet thus feeds
 both pipelines, and a sheet written for this pipeline alone can omit them.
