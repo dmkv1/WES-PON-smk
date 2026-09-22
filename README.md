@@ -31,7 +31,9 @@ Three arms then start from the recalibrated BAM:
   `pon.vcf.gz`.
 - **CNV.** `cnvkit.py access` and `autobin` define the bins per kit.
   `cnvkit.py coverage` measures each normal. `cnvkit.py reference` pools the
-  normals of one sex into `reference_{sex}.cnn`. `cnvkit.py fix` then puts each
+  normals of one sex into `reference_{sex}.cnn`. The male reference is built
+  with `--male-reference`, so a normal male chrX sits at log2 0 and matches the
+  caller's `cnvkit.py call --male-reference`. `cnvkit.py fix` then puts each
   normal through the same correction that the tumors get downstream, and writes
   its `.cnr`.
 - **Germline.** HaplotypeCaller writes one GVCF per normal. GenomicsDBImport and
@@ -47,7 +49,10 @@ that the targets, the antitargets, the CNVkit reference and every coverage file
 of a NormalDB hold canonical contigs only, and that all normals of one NormalDB
 share one interval set. `createNormalDatabase()` needs that second condition
 internally. Without the gate a small divergence, such as six ALT-contig bins,
-can reach production and make PureCN reject every tumor.
+can reach production and make PureCN reject every tumor. The gate also asserts
+that the median chrX log2 of every normal's `.cnr` lies within ±0.3 of 0, which
+fails on a reference built for the wrong chrX ploidy and on a normal whose sex
+does not match its `gender` column.
 
 ### Why the two grouping levels
 
@@ -135,7 +140,7 @@ identifiers.
 |---|---|
 | `ID` | sample group identifier, usually a patient ID. No `_`, `.` or `/` |
 | `sample` | sample identifier, unique across the whole cohort (this pipeline has no run dimension to tell two same-named samples apart) |
-| `gender` | `m` or `f`. Selects the CNVkit `--sample-sex` and the per-sex NormalDB. Validated at start |
+| `gender` | `m` or `f`. Selects the CNVkit `--sample-sex` and the per-sex NormalDB. `m` also builds the reference with `--male-reference`, so male chrX sits at log2 0 as the caller's `call --male-reference` expects. Validated at start |
 | `capture_kit` | a `capture_kit` token from `probe_configs` |
 | `fq1`, `fq2` | path to the R1/R2 FASTQ, or a glob that matches several. A glob expands to one alignment unit per matched pair |
 

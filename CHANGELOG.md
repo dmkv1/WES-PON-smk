@@ -14,6 +14,17 @@ PON versions.
 | MINOR | A tool, a rule or a deliverable is added, and an existing configuration still runs |
 | PATCH | A bug fix, a documentation change, or a pinned version bump that does not change the artifacts |
 
+## [1.1.0] - 2026-09-22
+
+**Changes the PON artifacts. Rebuild before use.**
+
+* `reference_m.cnn` is built with `--male-reference`. A normal male chrX sits at
+  log2 0, which matches the caller's `cnvkit.py call --male-reference`. The male
+  `.cnr` files and the male PureCN NormalDB change with it. `reference_f.cnn` is
+  unchanged.
+* `interval_check_{sex}.ok` also asserts that the median chrX log2 of every
+  normal's `.cnr` lies within ±0.3 of 0.
+
 ## [1.0.0] - 2026-08-08
 
 The first tagged release.
