@@ -49,6 +49,11 @@ refs:
 #   target_regions_bedfile — the "Regions" BED; used only as HsMetrics
 #                            TARGET_INTERVALS (for V6+UTR Agilent ships this
 #                            identical to Covered).
+#   trim_front             — optional; bases fastp trims from the 5' end of both
+#                            R1 and R2 (default 0). XT HS2 libraries (V8+UTR)
+#                            start each read with a 3-bp molecular barcode and
+#                            1-2 dark bases, so V8+UTR trims 5. Must match the
+#                            caller's probe_configs.<kit>.trim_front.
 probe_configs:
   SureSelectV6UTR:
     capture_kit: "V6+UTR"
@@ -58,15 +63,10 @@ probe_configs:
     capture_kit: "V8+UTR"
     covered_bedfile: "/path/to/refs/SureSelectHumanAllExon/V8UTR/S33613271_Covered.bed"
     target_regions_bedfile: "/path/to/refs/SureSelectHumanAllExon/V8UTR/S33613271_Regions.bed"
+    trim_front: 5
 
-# Sized for a 16-thread, 64 GB host, which is the common 4 GB per thread server
-# ratio. Scale every value with the machine, together with cores, resources.mem_mb
-# and resources.io_heavy in profiles/default/config.yaml. The budget:
-#
-#   64 GB total, of which the profile offers 56 GB to the scheduler.
-#   One heavy GATK job holds 40 GB (32 GB heap + 25% non-heap), so the cohort
-#   rules run one at a time. The light per-sample stages hold 10 GB, so five fit
-#   in the same budget.
+# Sized for a 16-thread, 64 GB host. Scale every value with the machine, together with cores, 
+# resources.mem_mb and resources.io_heavy in your workflow profile (profiles/<name>/config.yaml).
 resources:
   threads: 16
   # Per-thread sort buffer for `samtools sort`. Set explicitly because the
@@ -112,6 +112,11 @@ params:
     # Restrict BaseRecalibrator to the capture target (+padding). Must match the
     # calling pipeline's BQSR intervals for the PON normals to stay comparable.
     interval_padding: 100
+  mutect2:
+    # Mutect2 and GenomicsDBImport --interval-padding (bp) around the covered-BED
+    # intervals (default 0). Must match the caller's params.mutect2.interval_padding,
+    # or tumor calls in the padded flanks have no PON sites to be checked against.
+    interval_padding: 150
   cnvkit:
     use_offtarget: false
     autobin:

@@ -107,12 +107,18 @@ Then repoint every `/path/to/...` placeholder. Under `refs`:
 
 ### 3. Declare your capture kits
 
-Each kit under `config.yaml -> probe_configs` needs three keys:
+Each kit under `config.yaml -> probe_configs` needs three keys and takes one optional key:
 
 - `capture_kit` - the token that the sample sheet's `capture_kit` column uses for
   this kit.
 - `covered_bedfile` - the kit's **Covered** BED.
 - `target_regions_bedfile` - the kit's **Regions** BED.
+
+`trim_front` is optional (default 0): the bases fastp trims from the 5' end of
+R1 and R2. SureSelect XT HS2 libraries (V8+UTR) start each read with a 3-bp
+molecular barcode and 1-2 dark bases, so V8+UTR sets 5. It must match the
+caller's `probe_configs.<kit>.trim_front`, or the normals and the tumors are
+aligned from different reads.
 
 Give the original Agilent files. Their browser and track header lines need no
 edit: GATK and mosdepth skip them, and `cnvkit_strip_covered` removes them
@@ -169,17 +175,18 @@ columns works, including a hand-written one.
 
 ### 5. Adjust run settings
 
-Machine capacity lives in the run profile, which git ignores like `config.yaml`.
-Copy its example too:
+Machine capacity lives in a workflow profile. `profiles/default/config.yaml` is
+tracked and is a safe floor: 8 cores, a 64 GB memory limit and `io_heavy: 2`.
+64 GB is the smallest limit that still admits the largest single job, a heavy
+GATK rule at 40 GB. For a real run, copy `profiles/default/` to
+`profiles/<name>/` and size it. Git ignores every profile except `default`, so
+host sizing stays out of the repository.
 
-```bash
-cp profiles/default/config.yaml.example profiles/default/config.yaml
-```
+`config.yaml.example` is sized for a 16-thread, 64 GB machine. Scale it and your
+profile together, or the scheduler's ceiling stops to agree with what a job
+really takes:
 
-Both examples are sized for a 16-thread, 64 GB machine. Scale the two together,
-or the scheduler's ceiling stops to agree with what a job really takes:
-
-- `profiles/default/config.yaml` - the total `cores`, the `resources.mem_mb`
+- `profiles/<name>/config.yaml` - the total `cores`, the `resources.mem_mb`
   budget that the scheduler packs against, and `resources.io_heavy`, which caps
   how many whole-BAM rewrites (`mark_duplicates`, `apply_bqsr`) run at once.
 - `config.yaml -> resources` - the per-job `threads`, the per-thread `sort_mem`
@@ -213,6 +220,10 @@ them. `run_id` labels the messages.
 - `bqsr.interval_padding` (`100`) - the padding around the capture target for
   BaseRecalibrator. It must agree with the calling pipeline, or the normals stop
   to be comparable with the tumors.
+- `mutect2.interval_padding` (`0`; the example sets `150`) - the padding around
+  the Covered BED for the normals' Mutect2 calls and GenomicsDBImport. It must
+  match the caller's `params.mutect2.interval_padding`: tumor calls outside the
+  padded PON territory are never checked against the panel.
 - `cnvkit.use_offtarget` (`false`) - keep the antitarget BED empty. This is the
   CNVkit amplicon-mode path: `coverage` writes a header-only antitarget `.cnn`,
   and `reference` and `fix` build target-only artifacts. Every PON artifact and
@@ -225,13 +236,17 @@ them. `run_id` labels the messages.
 ## Running
 
 ```bash
-./launch.sh           # full run; logs to snakemake.log
-./launch.sh -n        # dry run (extra args pass through to snakemake)
-./stop.sh             # stop a run started by launch.sh
+./launch.sh                               # full run, default profile; logs to snakemake.log
+./launch.sh -n                            # dry run; all arguments pass through to snakemake
+./launch.sh --workflow-profile <name>     # full run with profiles/<name>/
+./stop.sh                                 # stop a run started by launch.sh
 ```
 
-`launch.sh` calls snakemake with `--profile profiles/default` (conda and
-singularity enabled). It writes the process ID to `snakemake.pid`, which
+Select the profile with `--workflow-profile`, not `--profile`. Snakemake always
+loads `profiles/default/` as the workflow profile unless another is named, and
+workflow-profile settings override `--profile` settings key by key, so a
+`--profile` never changes `cores` or `resources`. Keep `use-conda` and
+`use-singularity` in a copied profile. `launch.sh` writes the process ID to `snakemake.pid`, which
 `stop.sh` reads to send a `TERM` signal. The file is removed when the run ends.
 Run both from the pipeline root, so the relative paths (`work/`, `tmp/`,
 `logs/`) resolve.

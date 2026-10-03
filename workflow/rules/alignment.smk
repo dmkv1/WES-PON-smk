@@ -31,11 +31,16 @@ rule fastp_trim:
             if config["params"]["fastp"]["detect_adapter_for_pe"]
             else ""
         ),
+        trim_front=lambda wc: config["probe_configs"][probe_dict[wc.sample]].get(
+            "trim_front", 0
+        ),
     shell:
         "fastp -i {input.fq1} -I {input.fq2} "
         "-o {output.fq1} -O {output.fq2} "
         "-h {output.html} -j {output.json} "
-        "{params.detect_adapter} -w {threads} > {log} 2>&1"
+        "{params.detect_adapter} "
+        "--trim_front1 {params.trim_front} --trim_front2 {params.trim_front} "
+        "-w {threads} > {log} 2>&1"
 
 
 # Per-unit alignment. Each unit is mapped with its own read group, resolved and
