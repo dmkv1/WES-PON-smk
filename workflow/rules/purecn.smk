@@ -53,6 +53,9 @@ rule purecn_coverage_list:
 
 
 CANONICAL_CONTIGS = {f"chr{c}" for c in list(range(1, 23)) + ["X", "Y"]}
+# Largest |median chrX log2| a normal's .cnr may show against its sex-matched
+# reference. A reference built for the wrong chrX ploidy puts one sex near ±1.
+CHRX_LOG2_TOLERANCE = 0.3
 
 
 rule purecn_interval_check:
@@ -63,12 +66,18 @@ rule purecn_interval_check:
     # divergence (chr22_KI270879v1_alt / GSTT1) reach production. This asserts:
     #   1. no non-canonical contig survives in targets/antitargets/reference, and
     #   2. every normal's coverage file feeding a NormalDB shares one interval set
-    #      (the exact precondition createNormalDatabase() enforces internally).
+    #      (the exact precondition createNormalDatabase() enforces internally),
+    #   3. every normal's median chrX log2 in its .cnr is within
+    #      CHRX_LOG2_TOLERANCE of 0 (reference chrX ploidy and sample sex agree).
     input:
         targets=f"{config['outdir']}/PON/cnvkit/{{probes}}/targets.bed",
         antitargets=f"{config['outdir']}/PON/cnvkit/{{probes}}/antitargets.bed",
         reference=f"{config['outdir']}/PON/cnvkit/{{probes}}/reference_{{sex}}.cnn",
         coverage_list=f"{config['outdir']}/purecn/{{probes}}/coverage_files_{{sex}}.list",
+        cnrs=lambda wc: expand(
+            f"{config['outdir']}/coverage/{{sample}}/{{sample}}.cnr",
+            sample=get_samples(wc.probes, wc.sex),
+        ),
         normaldb=f"{config['outdir']}/PON/purecn/{{probes}}/normalDB_{{probes}}_{{sex}}_hg38.rds",
     output:
         ok=f"{config['outdir']}/purecn/{{probes}}/interval_check_{{sex}}.ok",
@@ -109,10 +118,28 @@ rule purecn_interval_check:
                     f"{ref_file} ({len(ref_set)} bins) — NormalDB would be "
                     f"rejected by createNormalDatabase()"
                 )
+
+        # 3. chrX sits at log2 0 in every normal
+        chrx_fail = []
+        chrx_medians = []
+        for cnr in input.cnrs:
+            df = pd.read_csv(cnr, sep="\t", usecols=["chromosome", "log2"])
+            med = df.loc[df["chromosome"] == "chrX", "log2"].median()
+            chrx_medians.append(med)
+            if not abs(med) <= CHRX_LOG2_TOLERANCE:
+                chrx_fail.append(f"{cnr}: {med:.3f}")
+        if chrx_fail:
+            raise ValueError(
+                f"median chrX log2 outside ±{CHRX_LOG2_TOLERANCE} of 0 for "
+                f"sex '{wildcards.sex}':\n  " + "\n  ".join(chrx_fail)
+            )
+
         with open(output.ok, "w") as f:
             f.write(
                 f"OK {wildcards.probes} {wildcards.sex}: "
-                f"{len(cov_files)} normals, {len(ref_set)} canonical bins\n"
+                f"{len(cov_files)} normals, {len(ref_set)} canonical bins, "
+                f"median chrX log2 range "
+                f"[{min(chrx_medians):.3f}, {max(chrx_medians):.3f}]\n"
             )
 
 

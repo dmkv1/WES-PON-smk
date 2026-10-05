@@ -10,11 +10,24 @@ tmp/
 __pycache__/
 *.log
 
-# Host configuration: reference paths in the first, machine capacity in the
-# second. Copy each .example alongside itself and edit. The examples are
-# tracked; the working copies are not.
+# Host configuration: reference paths. Copy config.yaml.example alongside
+# itself and edit. The example is tracked; the working copy is not.
 /config.yaml
-/profiles/default/config.yaml
+
+# Profiles: only the default profile config is tracked
+profiles/*
+!profiles/default/
+profiles/default/*
+!profiles/default/config.yaml
 
 # Cohort definition. Generated per run, and it carries sample identifiers.
 *.csv
+
+# Per-cohort QC findings and the exclusion list derived from them. Same reason
+# as the samplesheet: they name samples.
+/docs/issues.md
+/docs/excluded_samples.txt
+
+# one-off local rebuild tooling and its record
+/stash_unfiltered.sh
+/results_unfiltered/

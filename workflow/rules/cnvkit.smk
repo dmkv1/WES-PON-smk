@@ -176,13 +176,17 @@ rule cnvkit_reference:
     # `cnvkit.py reference` takes no -p; it pools the per-normal .cnn files in
     # one process.
     threads: 1
+    # The male reference is built with --male-reference so a normal male chrX
+    # sits at log2 0, matching the caller's `cnvkit.py call --male-reference`.
     params:
         sex=lambda wc: SEX_MAP[wc.sex],
+        male_ref=lambda wc: "--male-reference" if wc.sex == "m" else "",
     shell:
         """
         cnvkit.py reference \
             {input.target_covs} {input.antitarget_covs} \
             --sample-sex {params.sex} \
+            {params.male_ref} \
             -f {input.refg} \
             -o {output.ref} >>{log} 2>&1
         """

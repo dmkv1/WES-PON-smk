@@ -31,7 +31,9 @@ Three arms then start from the recalibrated BAM:
   `pon.vcf.gz`.
 - **CNV.** `cnvkit.py access` and `autobin` define the bins per kit.
   `cnvkit.py coverage` measures each normal. `cnvkit.py reference` pools the
-  normals of one sex into `reference_{sex}.cnn`. `cnvkit.py fix` then puts each
+  normals of one sex into `reference_{sex}.cnn`. The male reference is built
+  with `--male-reference`, so a normal male chrX sits at log2 0 and matches the
+  caller's `cnvkit.py call --male-reference`. `cnvkit.py fix` then puts each
   normal through the same correction that the tumors get downstream, and writes
   its `.cnr`.
 - **Germline.** HaplotypeCaller writes one GVCF per normal. GenomicsDBImport and
@@ -47,7 +49,10 @@ that the targets, the antitargets, the CNVkit reference and every coverage file
 of a NormalDB hold canonical contigs only, and that all normals of one NormalDB
 share one interval set. `createNormalDatabase()` needs that second condition
 internally. Without the gate a small divergence, such as six ALT-contig bins,
-can reach production and make PureCN reject every tumor.
+can reach production and make PureCN reject every tumor. The gate also asserts
+that the median chrX log2 of every normal's `.cnr` lies within ±0.3 of 0, which
+fails on a reference built for the wrong chrX ploidy and on a normal whose sex
+does not match its `gender` column.
 
 ### Why the two grouping levels
 
@@ -102,12 +107,18 @@ Then repoint every `/path/to/...` placeholder. Under `refs`:
 
 ### 3. Declare your capture kits
 
-Each kit under `config.yaml -> probe_configs` needs three keys:
+Each kit under `config.yaml -> probe_configs` needs three keys and takes one optional key:
 
 - `capture_kit` - the token that the sample sheet's `capture_kit` column uses for
   this kit.
 - `covered_bedfile` - the kit's **Covered** BED.
 - `target_regions_bedfile` - the kit's **Regions** BED.
+
+`trim_front` is optional (default 0): the bases fastp trims from the 5' end of
+R1 and R2. SureSelect XT HS2 libraries (V8+UTR) start each read with a 3-bp
+molecular barcode and 1-2 dark bases, so V8+UTR sets 5. It must match the
+caller's `probe_configs.<kit>.trim_front`, or the normals and the tumors are
+aligned from different reads.
 
 Give the original Agilent files. Their browser and track header lines need no
 edit: GATK and mosdepth skip them, and `cnvkit_strip_covered` removes them
@@ -135,7 +146,7 @@ identifiers.
 |---|---|
 | `ID` | sample group identifier, usually a patient ID. No `_`, `.` or `/` |
 | `sample` | sample identifier, unique across the whole cohort (this pipeline has no run dimension to tell two same-named samples apart) |
-| `gender` | `m` or `f`. Selects the CNVkit `--sample-sex` and the per-sex NormalDB. Validated at start |
+| `gender` | `m` or `f`. Selects the CNVkit `--sample-sex` and the per-sex NormalDB. `m` also builds the reference with `--male-reference`, so male chrX sits at log2 0 as the caller's `call --male-reference` expects. Validated at start |
 | `capture_kit` | a `capture_kit` token from `probe_configs` |
 | `fq1`, `fq2` | path to the R1/R2 FASTQ, or a glob that matches several. A glob expands to one alignment unit per matched pair |
 
@@ -145,8 +156,8 @@ columns override them per row: `flowcell`, `lane`, `barcode` and `library`. The
 `workflow/scripts/units.py` is vendored from it. Normals and tumors therefore
 resolve read groups identically.
 
-The caller's schema has two more optional columns, `sample_type` and
-`tumor_fraction`. This pipeline ignores both. Every sample it is given is a
+The caller's schema has three more optional columns, `sample_type`,
+`tumor_fraction` and `known_ploidy`. This pipeline ignores all three. Every sample it is given is a
 normal. If the columns are present, they are carried to
 `results/metadata/samples.tsv` as provenance. One generated sheet thus feeds
 both pipelines, and a sheet written for this pipeline alone can omit them.
@@ -164,17 +175,18 @@ columns works, including a hand-written one.
 
 ### 5. Adjust run settings
 
-Machine capacity lives in the run profile, which git ignores like `config.yaml`.
-Copy its example too:
+Machine capacity lives in a workflow profile. `profiles/default/config.yaml` is
+tracked and is a safe floor: 8 cores, a 64 GB memory limit and `io_heavy: 2`.
+64 GB is the smallest limit that still admits the largest single job, a heavy
+GATK rule at 40 GB. For a real run, copy `profiles/default/` to
+`profiles/<name>/` and size it. Git ignores every profile except `default`, so
+host sizing stays out of the repository.
 
-```bash
-cp profiles/default/config.yaml.example profiles/default/config.yaml
-```
+`config.yaml.example` is sized for a 16-thread, 64 GB machine. Scale it and your
+profile together, or the scheduler's ceiling stops to agree with what a job
+really takes:
 
-Both examples are sized for a 16-thread, 64 GB machine. Scale the two together,
-or the scheduler's ceiling stops to agree with what a job really takes:
-
-- `profiles/default/config.yaml` - the total `cores`, the `resources.mem_mb`
+- `profiles/<name>/config.yaml` - the total `cores`, the `resources.mem_mb`
   budget that the scheduler packs against, and `resources.io_heavy`, which caps
   how many whole-BAM rewrites (`mark_duplicates`, `apply_bqsr`) run at once.
 - `config.yaml -> resources` - the per-job `threads`, the per-thread `sort_mem`
@@ -208,6 +220,10 @@ them. `run_id` labels the messages.
 - `bqsr.interval_padding` (`100`) - the padding around the capture target for
   BaseRecalibrator. It must agree with the calling pipeline, or the normals stop
   to be comparable with the tumors.
+- `mutect2.interval_padding` (`0`; the example sets `150`) - the padding around
+  the Covered BED for the normals' Mutect2 calls and GenomicsDBImport. It must
+  match the caller's `params.mutect2.interval_padding`: tumor calls outside the
+  padded PON territory are never checked against the panel.
 - `cnvkit.use_offtarget` (`false`) - keep the antitarget BED empty. This is the
   CNVkit amplicon-mode path: `coverage` writes a header-only antitarget `.cnn`,
   and `reference` and `fix` build target-only artifacts. Every PON artifact and
@@ -220,14 +236,22 @@ them. `run_id` labels the messages.
 ## Running
 
 ```bash
-./launch.sh           # full run; logs to snakemake.log
-./launch.sh -n        # dry run (extra args pass through to snakemake)
-./stop.sh             # stop a run started by launch.sh
+./launch.sh                               # full run, default profile; logs to snakemake.log
+./launch.sh -n                            # dry run; all arguments pass through to snakemake
+./launch.sh --workflow-profile <name>     # full run with profiles/<name>/
+./stop.sh                                 # stop a run started by launch.sh
 ```
 
-`launch.sh` calls snakemake with `--profile profiles/default` (conda and
-singularity enabled). It writes the process ID to `snakemake.pid`, which
+Select the profile with `--workflow-profile`, not `--profile`. Snakemake always
+loads `profiles/default/` as the workflow profile unless another is named, and
+workflow-profile settings override `--profile` settings key by key, so a
+`--profile` never changes `cores` or `resources`. Keep `use-conda` and
+`use-singularity` in a copied profile. `launch.sh` writes the process ID to `snakemake.pid`, which
 `stop.sh` reads to send a `TERM` signal. The file is removed when the run ends.
+`launch.sh` passes the `rerun_triggers` key of `config.yaml` (space-separated, empty
+by default) as `--rerun-triggers`. Set it to `mtime` so edits to rule code, params or
+software environments do not re-run finished jobs. A `--rerun-triggers` on the command
+line replaces it.
 Run both from the pipeline root, so the relative paths (`work/`, `tmp/`,
 `logs/`) resolve.
 

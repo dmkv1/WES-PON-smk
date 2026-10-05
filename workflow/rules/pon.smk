@@ -23,6 +23,7 @@ rule genomicsdb_import:
         mem_mb=config["resources"]["gatk"]["heavy"]["mem_mb"],
     params:
         tmp_dir="tmp",
+        interval_padding=config["params"].get("mutect2", {}).get("interval_padding", 0),
     shell:
         """
         mkdir -p {params.tmp_dir}
@@ -31,6 +32,7 @@ rule genomicsdb_import:
         gatk --java-options "-Xms{resources.java_min_gb}G -Xmx{resources.java_max_gb}G" \
             GenomicsDBImport \
             -R {input.refg} -L {input.regions} \
+            --interval-padding {params.interval_padding} \
             --merge-input-intervals \
             --batch-size 50 \
             --reader-threads {threads} \

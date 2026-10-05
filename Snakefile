@@ -31,8 +31,21 @@ sheet = pd.read_csv(config["samplesheet"])
 units, samples, rg_warnings = build_units(
     sheet, strict=config.get("params", {}).get("rg", {}).get("strict", True)
 )
-for _warning in rg_warnings:
-    print(f"WARNING [read groups] {_warning}", file=sys.stderr)
+# Print warnings once, not once per job.
+#
+# Rules with run: spawn a worker that re-imports this file, so this block runs
+# again per job. 185 jobs x 167 warnings = 32550 lines of log. Ask me how I know.
+#
+# Env var instead of a module-level flag: the child gets a fresh namespace but
+# inherits the environment, so the parent's flag survives the spawn. Fresh
+# snakemake run warns again, which is what we want.
+#
+# Not onstart handler at it doesn't fire on --dry-run, and dry-run is when you
+# actually want to read these.
+if not os.environ.get("WESPON_RG_WARNED"):
+    for _warning in rg_warnings:
+        print(f"WARNING [read groups] {_warning}", file=sys.stderr)
+    os.environ["WESPON_RG_WARNED"] = "1"
 
 # --- Validation -----------------------------------------------------------
 
