@@ -24,6 +24,7 @@ rule mutect2_single_sample:
         mem_mb=config["resources"]["gatk"]["medium"]["mem_mb"],
     params:
         tmp_dir="tmp",
+        interval_padding=config["params"].get("mutect2", {}).get("interval_padding", 0),
     shell:
         """
         mkdir -p {params.tmp_dir}
@@ -31,6 +32,7 @@ rule mutect2_single_sample:
             Mutect2 \
             -R {input.refg} -I {input.bam} \
             --intervals {input.regions} \
+            --interval-padding {params.interval_padding} \
             --max-mnp-distance 0 \
             --native-pair-hmm-threads {threads} \
             -O {output.vcf} \
