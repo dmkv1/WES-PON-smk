@@ -248,6 +248,10 @@ workflow-profile settings override `--profile` settings key by key, so a
 `--profile` never changes `cores` or `resources`. Keep `use-conda` and
 `use-singularity` in a copied profile. `launch.sh` writes the process ID to `snakemake.pid`, which
 `stop.sh` reads to send a `TERM` signal. The file is removed when the run ends.
+`launch.sh` passes the `rerun_triggers` key of `config.yaml` (space-separated, empty
+by default) as `--rerun-triggers`. Set it to `mtime` so edits to rule code, params or
+software environments do not re-run finished jobs. A `--rerun-triggers` on the command
+line replaces it.
 Run both from the pipeline root, so the relative paths (`work/`, `tmp/`,
 `logs/`) resolve.
 

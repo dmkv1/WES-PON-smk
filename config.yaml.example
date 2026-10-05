@@ -14,6 +14,12 @@ outdir: "results"
 telegram_bot_env: ""  # Path to .telegram_bot.env file; leave empty to disable notifications
 run_id: ""            # Human-readable label prepended to Telegram notifications, e.g. "pon"
 
+# Snakemake --rerun-triggers, read by launch.sh (space-separated). Empty leaves
+# Snakemake's default (all triggers). "mtime" alone keeps edits to rule code,
+# params or envs from re-running finished jobs. A --rerun-triggers on the
+# launch.sh command line takes precedence.
+rerun_triggers: ""
+
 # Container images (pinned), matching WES-snakemake so PON normals and caller
 # tumors run the same GATK build. Referenced per rule as config["containers"][...].
 containers:

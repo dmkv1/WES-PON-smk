@@ -14,6 +14,14 @@ PON versions.
 | MINOR | A tool, a rule or a deliverable is added, and an existing configuration still runs |
 | PATCH | A bug fix, a documentation change, or a pinned version bump that does not change the artifacts |
 
+## [1.2.1] - 2026-10-05
+
+**Does not change the PON artifacts.**
+
+### Added
+- `rerun_triggers` (default empty): `launch.sh` passes it as `--rerun-triggers`
+  unless the command line sets one.
+
 ## [1.2.0] - 2026-10-03
 
 **With default settings this release does not change the PON artifacts.**
